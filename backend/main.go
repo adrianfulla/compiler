@@ -10,6 +10,7 @@ import (
 
 func main() {
 	serve()
+	// shuntingYard("b((a)?)")
 }
 
 func serve() {
@@ -23,14 +24,14 @@ func serve() {
 
 	r.POST("/automata", func(c *gin.Context) {
 		var request struct {
-            Regex string `json:"regex"`
-        }
+			Regex string `json:"regex"`
+		}
 
-        if err := c.BindJSON(&request); err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-            return
-        }
-        
+		if err := c.BindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
 		c.Data(http.StatusOK, "application/json", makeArbol(request.Regex))
 	})
 
