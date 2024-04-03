@@ -1,0 +1,5 @@
+package automatas
+
+import{
+	"fmt"
+}
