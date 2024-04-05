@@ -9,8 +9,10 @@ import (
 )
 
 func main() {
-	serve()
+	// serve()
 	// shuntingYard("b((a)?)")
+	makeDirAfd("aaaa")
+
 }
 
 func serve() {
@@ -31,8 +33,8 @@ func serve() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-
-		c.Data(http.StatusOK, "application/json", makeArbol(request.Regex))
+		makeDirAfd(request.Regex)
+		// c.Data(http.StatusOK, "application/json", )
 	})
 
 	r.Run()
@@ -50,14 +52,15 @@ func shuntingYard(Regex string) string {
 	}
 }
 
-func makeArbol(Regex string) []byte {
-	postfix := shuntingYard(Regex)
-	arbol := &automatas.ArbolExpresion{}
-	arbol.ConstruirArbol(postfix)
-	jsonData, err := arbol.ToJson()
+func makeDirAfd(Regex string) string {
+	// Prueba de la función de validación
+	postfix, err := automatas.InfixToPosfix(Regex)
 	if err != nil {
-		return nil
+		fmt.Println("Error:", err)
+		return ""
 	} else {
-		return jsonData
+		fmt.Println("Regex postfix:", postfix)
+		automatas.NewDirectAfd(postfix)
+		return ""
 	}
 }

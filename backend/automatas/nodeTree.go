@@ -3,17 +3,19 @@ package automatas
 import (
 	"encoding/json"
 	"unicode"
+	// "strings"
+	"fmt"
 )
 
 type Nodo struct {
-	Valor       string                   `json:"valor"`
+	Valor       rune                   `json:"valor"`
 	Izquierdo   *Nodo                    `json:"izquierdo,omitempty"`
 	Derecho     *Nodo                    `json:"derecho,omitempty"`
 	Leaf        int                      `json:"leaf"`
 	Nullability bool                     `json:"nullability,omitempty"`
-	Firstpos    map[int]struct{}         `json:"firstpos,omitempty"`
-	Lastpos     map[int]struct{}         `json:"lastpos,omitempty"`
-	Followpos   map[int]map[int]struct{} `json:"followpos,omitempty"`
+	Firstpos    []int			         `json:"firstpos,omitempty"`
+	Lastpos     []int	      		     `json:"lastpos,omitempty"`
+	Followpos   []int	 				 `json:"followpos,omitempty"`
 }
 
 
@@ -31,46 +33,70 @@ func (arbol *ArbolExpresion) ConstruirArbol(posfix string) {
 	stack := []*Nodo{}
 
 	for _, char := range posfix {
-		if alphanum(char) || char == 'ε' {
-			// Si es un operando, crea un nodo y lo apila
-			nodo := &Nodo{
-				Valor:    string(char),
-				Firstpos: make(map[int]struct{}),
-				Lastpos:  make(map[int]struct{}),
+		fmt.Print(char)
+		canBeNull := false
+		firstpos := []int{}
+		lastpos := []int{}
+
+		if alphanum(char) {
+			if char == 'ε'{
+				canBeNull = true
+			} else if unicode.IsLetter(char) || unicode.IsDigit(char) || char == '#' {
+				firstpos = append(firstpos, len(arbol.Simbolos))
+                lastpos = append(lastpos, len(arbol.Simbolos))
+				stack = append(stack, arbol.createLeaf(char, canBeNull, firstpos, lastpos))
 			}
-			stack = append(stack, nodo)
-		} else {
-			// Es un operador, pop elementos de la pila y crea nuevos nodos
-			switch char {
-			case '*':
-				nodo := &Nodo{
-					Valor: string(char),
-				}
-				if len(stack) > 0 {
-					nodo.Izquierdo = stack[len(stack)-1]
-					stack = stack[:len(stack)-1]
-				}
-				stack = append(stack, nodo)
-			case '|', '^':
-				nodo := &Nodo{
-					Valor: string(char),
-				}
-				if len(stack) > 1 {
-					nodo.Derecho = stack[len(stack)-1]
-					nodo.Izquierdo = stack[len(stack)-2]
-					stack = stack[:len(stack)-2]
-				}
-				stack = append(stack, nodo)
-				// Agregar más casos según sea necesario
-			}
+		} else if char == '*' {
+			canBeNull = true
+			n1 := stack.Pop
+
+		} else if char == '|' || char == '^'{
+
 		}
 	}
 
-	if len(stack) > 0 {
-		arbol.Raiz = stack[0]
+}
+
+func (arbol *ArbolExpresion) createLeaf(valor rune, nullable bool, firstpos []int, lastpos []int) *Nodo {
+	if lastpos == nil {lastpos = []int{}}
+	if firstpos == nil {firstpos = []int{}}
+	nodo := &Nodo{
+		Valor:       valor,
+        Izquierdo:   nil,
+        Derecho:     nil,
+        Leaf:        len(arbol.Simbolos),
+        Nullability: nullable,
+        Firstpos:    firstpos,
+        Lastpos:     lastpos,
+        Followpos:   []int{},
 	}
+	arbol.Simbolos = append(arbol.Simbolos, nodo)
+	return nodo
 }
 
 func (arbol *ArbolExpresion) ToJson() ([]byte, error) {
 	return json.MarshalIndent(arbol, "", "")
+}
+
+// func RecorrerArbol(nodo *Nodo, nivel int) {
+// 	if nodo == nil {
+// 		return
+// 	}
+
+// 	// Imprimir los detalles del nodo actual
+// 	indent := strings.Repeat("  ", nivel) // Indentación basada en el nivel del árbol
+// 	fmt.Printf("%sNodo: Valor=%s, Leaf=%d, Nullability=%t\n", indent, nodo.Valor, nodo.Leaf, nodo.Nullability)
+// 	fmt.Printf("%sFirstpos=%v, Lastpos=%v, Followpos=%v\n", indent, nodo.Firstpos, nodo.Lastpos, nodo.Followpos)
+
+// 	// Recursivamente visitar los nodos izquierdo y derecho
+// 	fmt.Printf("%sIzquierdo:\n", indent)
+// 	RecorrerArbol(nodo.Izquierdo, nivel+1)
+// 	fmt.Printf("%sDerecho:\n", indent)
+// 	RecorrerArbol(nodo.Derecho, nivel+1)
+// }
+
+// ImprimirArbol inicia el recorrido del árbol desde la raíz
+func (arbol *ArbolExpresion) ImprimirArbol() {
+	fmt.Println("Recorriendo el Árbol de Expresión:")
+	RecorrerArbol(arbol.Raiz, 0)
 }
