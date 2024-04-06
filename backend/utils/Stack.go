@@ -51,3 +51,12 @@ func (s *Stack) IsEmpty() bool {
 func (s *Stack) Size() int {
 	return len(s.elements)
 }
+
+func (s *Stack) ElemInStack(element interface{}) (bool){
+	for i := 0; i < len(s.elements); i++{
+		if s.elements[i] == element{
+            return true
+        }
+	}
+	return false
+}

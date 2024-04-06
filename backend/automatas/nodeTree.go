@@ -88,7 +88,7 @@ func (arbol *ArbolExpresion) ConstruirArbol(posfix string) {
 	}
 	arbol.Raiz = stack.Pop().(*utils.Nodo)
 	arbol.calcular_followpos()
-	arbol.imprimirDetalle()
+	// arbol.imprimirDetalle()
 }
 
 func (arbol *ArbolExpresion) createLeaf(valor rune, nullable bool, firstpos []int, lastpos []int) *utils.Nodo {
@@ -118,31 +118,23 @@ func (arbol *ArbolExpresion) ToJson() ([]byte, error) {
 }
 
 func (arbol *ArbolExpresion) visitNodo(nodo *utils.Nodo) {
-	fmt.Printf("Nodo Visitado %s\n", string(nodo.Valor))
 	if nodo.Valor == '^' {
 		for _, pos := range nodo.Izquierdo.Lastpos {
-			fmt.Printf("posicion %d\n", pos)
-			fmt.Printf("lastpos(c1) %d, firstpos(c2) %d\n", nodo.Izquierdo.Lastpos, nodo.Derecho.Firstpos)
-			fmt.Printf("lastpos(c2) %d, firstpos(c1) %d\n", nodo.Derecho.Lastpos, nodo.Izquierdo.Firstpos)
 			if arbol.Simbolos[pos].Followpos == nil {
 				arbol.Simbolos[pos].Followpos = make([]int, 0)
 			}
 
 			arbol.Simbolos[pos].Followpos = append(arbol.Simbolos[pos].Followpos, nodo.Derecho.Firstpos...)
-			fmt.Printf("followpos de %d: %d\n", *arbol.Simbolos[pos].Leaf, arbol.Simbolos[pos].Followpos)
 		}
 	} else if nodo.Valor == '*' {
 		for _, pos := range nodo.Lastpos {
-			// fmt.Printf("%d", pos)
 			if arbol.Simbolos[pos].Followpos == nil {
 				arbol.Simbolos[pos].Followpos = make([]int, 0)
 			}
 
 			arbol.Simbolos[pos].Followpos = append(arbol.Simbolos[pos].Followpos, nodo.Firstpos...)
-			fmt.Printf("followpos de %d: %d\n", *arbol.Simbolos[pos].Leaf, arbol.Simbolos[pos].Followpos)
 		}
 	}
-	fmt.Print("\n")
 	if nodo.Izquierdo != nil {
 		arbol.visitNodo(nodo.Izquierdo)
 	}
@@ -160,5 +152,5 @@ func (arbol *ArbolExpresion) calcular_followpos() {
 
 func (arbol *ArbolExpresion) imprimirDetalle() {
 	fmt.Println("Mostrando detalles de arbol")
-	// arbol.Raiz.ImprimirDetalle()
+	arbol.Raiz.ImprimirDetalle()
 }
