@@ -91,7 +91,7 @@ func convertQuestionMarkAndPlusSign(regex string) (string, error) {
 			}
 		} else if char == '+' {
 			if i == 0 {
-				return "", fmt.Errorf("uso incorrecto del '?' al principio de la expresión")
+				return "", fmt.Errorf("uso incorrecto del '+' al principio de la expresión")
 			}
 
 			if regex[i-1] == ')' {
@@ -141,8 +141,11 @@ func cleaner(regex string) string {
 		if i+1 < len(regex) {
 			nextRune := rune(regex[i+1])
 
-			if (unicode.IsLetter(r) || unicode.IsNumber(r) || r == 'ε' || r == ')') &&
-				(unicode.IsLetter(nextRune) || unicode.IsNumber(nextRune) || nextRune == '(' || nextRune == 'ε') {
+			// if (unicode.IsLetter(r) || unicode.IsNumber(r) || r == 'ε' || r == ')') &&
+			// 	(unicode.IsLetter(nextRune) || unicode.IsNumber(nextRune) || nextRune == '(' || nextRune == 'ε') {
+			// 	regexWithConcatSymbol.WriteRune('^')
+			// }
+			if (!strings.ContainsRune("(|", r) && !strings.ContainsRune("*+?|)", nextRune)) {
 				regexWithConcatSymbol.WriteRune('^')
 			}
 		}

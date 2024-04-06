@@ -87,7 +87,7 @@ func NewDirectAfd(regex string) *DirectAfd {
 	}
 	afd.estadoActual = 0
 	afd.arbol = &ArbolExpresion{}
-	afd.arbol.ConstruirArbol(regex) 
+	afd.arbol.ConstruirArbol(regex+"#^") 
 	afd.construirAfd() 
 
 	// afd.imprimirDetalle()
@@ -109,14 +109,15 @@ func (afd *DirectAfd) obtenerOCrearEstado(positions []int) (*Dstate) {
 			return estado
 		} 
 	 }
-	 aceptacion := intInIntArray(afd.arbol.Raiz.Derecho.Leaf,positions)
+	//  aceptacion := intInIntArray(afd.arbol.Raiz.Derecho.Leaf,positions)
+	 aceptacion := false
 	 return afd.nuevoEstado(len(positions), aceptacion)
 }
 
 
 // construirAfd construye el AFD a partir del árbol de expresión.
 func (afd *DirectAfd) construirAfd() {
-	fmt.Print(afd.arbol.Raiz.Firstpos)
+	fmt.Println()
 //    inicial := afd.obtenerOCrearEstado(afd.arbol.Raiz.Firstpos)
 }
 
