@@ -1,12 +1,14 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Nodo struct {
-	Valor       rune                   `json:"valor"`
+	Valor       string                   	 `json:"valor"`
 	Izquierdo   *Nodo                    `json:"izquierdo,omitempty"`
 	Derecho     *Nodo                    `json:"derecho,omitempty"`
-	Leaf        *int                      `json:"leaf"`
+	Leaf        *int                     `json:"leaf"`
 	Nullability bool                     `json:"nullability,omitempty"`
 	Firstpos    []int			         `json:"firstpos,omitempty"`
 	Lastpos     []int	      		     `json:"lastpos,omitempty"`
@@ -16,7 +18,6 @@ type Nodo struct {
 func (nodo *Nodo) IsLeaf() bool {
     return nodo.Leaf != nil
 }
-
 
 func (nodo *Nodo) PrintNodoDetalle(){
 	if nodo.IsLeaf() {

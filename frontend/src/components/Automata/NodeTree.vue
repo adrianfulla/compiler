@@ -23,7 +23,7 @@
     },
     async created() {
       try {
-        const response = await fetch('http://localhost:8080/automata',{
+        const response = await fetch('http://localhost:8080/automata/arbol',{
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

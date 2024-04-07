@@ -11,7 +11,7 @@ import (
 type Dstate struct {
 	nombre       string
 	aceptacion   bool
-	transiciones map[rune]*Dstate
+	transiciones map[string]*Dstate
 	posicion     []int
 }
 
@@ -19,12 +19,12 @@ func NewDstate(nombre string, aceptacion bool, posicion []int) *Dstate {
 	return &Dstate{
 		nombre:       nombre,
 		aceptacion:   aceptacion,
-		transiciones: make(map[rune]*Dstate),
+		transiciones: make(map[string]*Dstate),
 		posicion:     posicion,
 	}
 }
 
-func (d *Dstate) AddTransicion(simbolo rune, estado *Dstate) {
+func (d *Dstate) AddTransicion(simbolo string, estado *Dstate) {
 	d.transiciones[simbolo] = estado
 }
 
@@ -140,10 +140,10 @@ func (afd *DirectAfd) construirAfd() {
 	for pendientes.Size() > 0 {
 		curr_estado := pendientes.Pop().(*Dstate)
 		if !procesados.ElemInStack(curr_estado.nombre) {
-			simbolos_a_pos := make(map[rune][]int)
+			simbolos_a_pos := make(map[string][]int)
 			for _, pos := range curr_estado.posicion {
 				simbolo := afd.Arbol.Simbolos[pos].Valor
-				if !strings.ContainsRune("ε#", simbolo) {
+				if !strings.ContainsAny("ε#", simbolo) {
 					if simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] == nil {
 						simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = make([]int, 0)
 					}
@@ -182,7 +182,7 @@ func (afd *DirectAfd) ToJson() *DAfdJson {
 			jsonMaker.EstadosFinales = utils.AppendStringIfNotInArr(estado.nombre, jsonMaker.EstadosFinales)
 		}
 		for sim, trans := range estado.transiciones {
-			jsonMaker.Alfabeto = utils.AppendStringIfNotInArr(string(sim), jsonMaker.Alfabeto)
+			jsonMaker.Alfabeto = utils.AppendStringIfNotInArr(sim, jsonMaker.Alfabeto)
 			if jsonMaker.Transiciones[estado.nombre] == nil {
 				jsonMaker.Transiciones[estado.nombre] = make(map[string]string)
 			}

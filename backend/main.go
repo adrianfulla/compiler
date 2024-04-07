@@ -23,7 +23,19 @@ func serve() {
 		})
 	})
 
-	r.POST("/automata", func(c *gin.Context) {
+	r.POST("/automata/arbol", func(c *gin.Context) {
+		var request struct {
+			Regex string `json:"regex"`
+		}
+
+		if err := c.BindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		response := makeArboldeNodos(request.Regex)
+		c.Data(http.StatusOK, "application/json", response)
+	})
+	r.POST("/automata/afd", func(c *gin.Context) {
 		var request struct {
 			Regex string `json:"regex"`
 		}
@@ -33,24 +45,11 @@ func serve() {
 			return
 		}
 		response := makeDirAfd(request.Regex)
-		fmt.Print(string(response))
 		c.Data(http.StatusOK, "application/json", response)
 	})
 
 	r.Run()
 }
-
-// func shuntingYard(Regex string) string {
-// 	// Prueba de la función de validación
-// 	postfix, err := automatas.InfixToPosfix(Regex)
-// 	if err != nil {
-// 		fmt.Println("Error:", err)
-// 		return ""
-// 	} else {
-// 		fmt.Println("Regex postfix:", postfix)
-// 		return postfix
-// 	}
-// }
 
 func makeDirAfd(Regex string) []byte {
 	// Prueba de la función de validación
@@ -59,18 +58,31 @@ func makeDirAfd(Regex string) []byte {
 		fmt.Println("Error:", err)
 		return nil
 	} else {
-		fmt.Println("Regex postfix:", postfix)
 		afd := automatas.NewDirectAfd(postfix)
 		jsonAfd, err := afd.MarshalJson()
 		if err != nil {
 			fmt.Println("Error al convertir a JSON:", err)
 			return nil
 		}
-		jsonArbol, err := afd.Arbol.ToJson()
+		
+		return jsonAfd
+	}
+}
+
+func makeArboldeNodos(Regex string) []byte {
+	postfix, err := automatas.InfixToPosfix(Regex)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	} else {
+		arbol := &automatas.ArbolExpresion{}
+		arbol.ConstruirArbol(postfix)
+		jsonAfd, err := arbol.ToJson()
 		if err != nil {
 			fmt.Println("Error al convertir a JSON:", err)
 			return nil
 		}
-		return append(jsonAfd, jsonArbol...)
+		
+		return jsonAfd
 	}
 }
