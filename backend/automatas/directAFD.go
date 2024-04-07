@@ -1,22 +1,21 @@
 package automatas
 
 import (
+	"encoding/json"
 	"fmt"
-	"strconv"
-
-	"strings"
-
 	"github.com/adrianfulla/compiler/backend/utils"
+	"strconv"
+	"strings"
 )
 
 type Dstate struct {
 	nombre       string
 	aceptacion   bool
 	transiciones map[rune]*Dstate
-	posicion     int
+	posicion     []int
 }
 
-func NewDstate(nombre string, aceptacion bool, posicion int) *Dstate {
+func NewDstate(nombre string, aceptacion bool, posicion []int) *Dstate {
 	return &Dstate{
 		nombre:       nombre,
 		aceptacion:   aceptacion,
@@ -29,154 +28,174 @@ func (d *Dstate) AddTransicion(simbolo rune, estado *Dstate) {
 	d.transiciones[simbolo] = estado
 }
 
+func (d *Dstate) Print() {
+	fmt.Printf("Dstate: [nombre: %s, aceptacion: %t, posicion: %d, transiciones: [", d.nombre, d.aceptacion, d.posicion)
+	for i, e := range d.transiciones {
+		fmt.Printf("%s: %s, ", string(i), e.nombre)
+	}
+	fmt.Print("]]\n")
+}
+
+func printDstateStack(stack utils.Stack) {
+	temp := stack
+	for temp.Size() > 0 {
+		t := temp.Pop()
+		switch t.(type) {
+		case *Dstate:
+			t.(*Dstate).Print()
+		case string:
+			fmt.Printf("String found %s\n", t)
+		default:
+			fmt.Printf("Dstate not in stack, obtained elem of type %t\n", t)
+		}
+	}
+}
+
 type DirectAfd struct {
 	transiciones      map[string]map[string]string
-	estadosAceptacion map[string]string
-	alfabeto          map[string]string
+	estadosAceptacion []string
+	alfabeto          []string
 	estados           map[string]*Dstate
 	estadoInicial     *Dstate
-	arbol             *ArbolExpresion
+	Arbol             *ArbolExpresion
 	estadoActual      int
-	posiciones        []int
+	posiciones        map[int][]int
 }
 
 func intInIntArray(n interface{}, arr []int) bool {
-    switch v := n.(type) {
-    case int:
-        for _, i := range arr {
-            if i == v {
-                return true
-            }
-        }
-    case *int:
-        if v == nil {
-            return false
-        }
-        for _, i := range arr {
-            if i == *v {
-                return true
-            }
-        }
-    default:
-        // Si n no es ni int ni *int, se retorna false
-        return false
-    }
-    return false
+	switch v := n.(type) {
+	case int:
+		for _, i := range arr {
+			if i == v {
+				return true
+			}
+		}
+	case *int:
+		if v == nil {
+			return false
+		}
+		for _, i := range arr {
+			if i == *v {
+				return true
+			}
+		}
+	default:
+		// Si n no es ni int ni *int, se retorna false
+		return false
+	}
+	return false
 }
 
-func simboloInSimboloDict(n rune, dict map[rune][]int)(bool){
-	for i := range dict{
-		if n == i{
+func simboloInSimboloDict(n rune, dict map[rune][]int) bool {
+	for i := range dict {
+		if n == i {
 			return true
 		}
 	}
 	return false
 }
 
-func removeDuplicates(arr []interface{}){
-
-}
-
-// func (afd *DirectAfd) imprimirDetalle() {
-// 	fmt.Println("Detalle del AFD:")
-// 	fmt.Println("Transiciones:")
-// 	for estado, transMap := range afd.transiciones {
-// 		for simbolo, destino := range transMap {
-// 			fmt.Printf("  %s -> %s: %s\n", estado, simbolo, destino)
-// 		}
-// 	}
-
-// 	fmt.Println("Estados de Aceptación:")
-// 	for estado, aceptacion := range afd.estadosAceptacion {
-// 		fmt.Printf("  %s: %t\n", estado, aceptacion)
-// 	}
-
-// 	fmt.Println("Alfabeto:")
-// 	for simbolo := range afd.alfabeto {
-// 		fmt.Printf("  %s\n", simbolo)
-// 	}
-
-// 	fmt.Println("Estados:")
-// 	for nombre, estado := range afd.estados {
-// 		fmt.Printf("  %s: %v\n", nombre, estado)
-// 	}
-
-// 	if afd.estadoInicial != nil {
-// 		fmt.Printf("Estado Inicial: %s\n", afd.estadoInicial.nombre)
-// 	} else {
-// 		fmt.Println("Estado Inicial: No definido")
-// 	}
-// }
-
 func NewDirectAfd(regex string) *DirectAfd {
 	afd := &DirectAfd{
 		transiciones:      make(map[string]map[string]string),
-		estadosAceptacion: make(map[string]string),
-		alfabeto:          make(map[string]string),
+		estadosAceptacion: []string{},
+		alfabeto:          []string{},
 		estados:           make(map[string]*Dstate),
+		posiciones:        make(map[int][]int),
 	}
 	afd.estadoActual = 0
-	afd.arbol = &ArbolExpresion{}
-	afd.arbol.ConstruirArbol(regex + "#^")
+	afd.Arbol = &ArbolExpresion{}
+	afd.Arbol.ConstruirArbol(regex + "#^")
 	afd.construirAfd()
 
-	// afd.imprimirDetalle()
 	return afd
 }
 
-func (afd *DirectAfd) nuevoEstado(position int, aceptacion bool) *Dstate {
+func (afd *DirectAfd) nuevoEstado(position []int, aceptacion bool) *Dstate {
 	nombre := "S" + strconv.Itoa(afd.estadoActual)
 	afd.estadoActual++
 	nuevo_estado := NewDstate(nombre, aceptacion, position)
 	afd.estados[nombre] = nuevo_estado
-	afd.posiciones = append(afd.posiciones, position)
+	afd.posiciones[len(afd.posiciones)] = position
 	return nuevo_estado
 }
 
 func (afd *DirectAfd) obtenerOCrearEstado(positions []int) *Dstate {
 	for _, estado := range afd.estados {
-		if intInIntArray(estado.posicion, positions) {
+		if utils.CompareSlices(estado.posicion, positions) {
 			return estado
 		}
 	}
-	aceptacion := intInIntArray(afd.arbol.Raiz.Derecho.Leaf,positions)
-	return afd.nuevoEstado(len(positions), aceptacion)
+	aceptacion := intInIntArray(*afd.Arbol.Raiz.Derecho.Leaf, positions)
+	return afd.nuevoEstado(positions, aceptacion)
 }
 
 // construirAfd construye el AFD a partir del árbol de expresión.
 func (afd *DirectAfd) construirAfd() {
-	fmt.Println()
-	afd.estadoInicial = afd.obtenerOCrearEstado(afd.arbol.Raiz.Firstpos)
+	afd.estadoInicial = afd.obtenerOCrearEstado(afd.Arbol.Raiz.Firstpos)
 	pendientes := utils.NewStack()
 	pendientes.Push(afd.estadoInicial)
 	procesados := utils.NewStack()
 
 	for pendientes.Size() > 0 {
 		curr_estado := pendientes.Pop().(*Dstate)
-		fmt.Printf("curr est: %s \n", curr_estado.nombre)
 		if !procesados.ElemInStack(curr_estado.nombre) {
 			simbolos_a_pos := make(map[rune][]int)
-			for pos := range curr_estado.posicion {
-				fmt.Printf("pos %d ", pos)
-				simbolo := afd.arbol.Simbolos[pos].Valor
-				fmt.Printf("simbolo %s ", string(simbolo))
+			for _, pos := range curr_estado.posicion {
+				simbolo := afd.Arbol.Simbolos[pos].Valor
 				if !strings.ContainsRune("ε#", simbolo) {
-					followpos := afd.arbol.Simbolos[pos].Followpos
-					fmt.Printf("followpos %d\n", followpos)
-						if simboloInSimboloDict(simbolo, simbolos_a_pos){
-							simbolos_a_pos[simbolo] = utils.RemoveDuplicate(append(simbolos_a_pos[simbolo], followpos...))
-						}else{
-							simbolos_a_pos[simbolo] = followpos
-						}
+					if simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] == nil {
+						simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = make([]int, 0)
+					}
+					simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = append(simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos...)
+
 				}
 			}
-			for sim, pos := range simbolos_a_pos{
+
+			for sim, pos := range simbolos_a_pos {
 				next_state := afd.obtenerOCrearEstado(pos)
 				curr_estado.AddTransicion(sim, next_state)
-				if !procesados.ElemInStack(next_state.nombre) && !pendientes.ElemInStack(next_state){
+				if !procesados.ElemInStack(next_state.nombre) && !pendientes.ElemInStack(next_state) {
 					pendientes.Push(next_state)
 				}
 			}
+			procesados.Push(curr_estado.nombre)
 		}
 	}
+}
+
+func (afd *DirectAfd) MarshalJson() ([]byte, error) {
+	return json.Marshal(afd.ToJson())
+}
+
+func (afd *DirectAfd) ToJson() *DAfdJson {
+	jsonMaker := &DAfdJson{
+		Estados:        []string{},
+		Alfabeto:       []string{},
+		EstadosFinales: []string{},
+		Transiciones:   make(map[string]map[string]string),
+	}
+	jsonMaker.EstadoInicial = afd.estadoInicial.nombre
+	for _, estado := range afd.estados {
+		jsonMaker.Estados = utils.AppendStringIfNotInArr(estado.nombre, jsonMaker.Estados)
+		if estado.aceptacion {
+			jsonMaker.EstadosFinales = utils.AppendStringIfNotInArr(estado.nombre, jsonMaker.EstadosFinales)
+		}
+		for sim, trans := range estado.transiciones {
+			jsonMaker.Alfabeto = utils.AppendStringIfNotInArr(string(sim), jsonMaker.Alfabeto)
+			if jsonMaker.Transiciones[estado.nombre] == nil {
+				jsonMaker.Transiciones[estado.nombre] = make(map[string]string)
+			}
+			jsonMaker.Transiciones[estado.nombre][string(sim)] = trans.nombre
+		}
+	}
+	return jsonMaker
+}
+
+type DAfdJson struct {
+	Estados        []string                     `json:"estados"`
+	Alfabeto       []string                     `json:"alfabeto"`
+	EstadoInicial  string                       `json:"estado_inicial"`
+	EstadosFinales []string                     `json:"estados_finales"`
+	Transiciones   map[string]map[string]string `json:"transiciones"`
 }

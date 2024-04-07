@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"reflect"
 	"fmt"
+	"reflect"
 )
 
 func ConcatenateTwoArrays(arr1 []interface{}, arr2 []interface{}) ([]interface{}, error) {
@@ -14,13 +14,50 @@ func ConcatenateTwoArrays(arr1 []interface{}, arr2 []interface{}) ([]interface{}
 }
 
 func RemoveDuplicate[T comparable](sliceList []T) []T {
-    allKeys := make(map[T]bool)
-    list := []T{}
-    for _, item := range sliceList {
-        if _, value := allKeys[item]; !value {
-            allKeys[item] = true
-            list = append(list, item)
-        }
-    }
-    return list
+	allKeys := make(map[T]bool)
+	list := []T{}
+	for _, item := range sliceList {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
+
+func CompareSlices(slice1, slice2 []int) bool {
+	if len(slice1) != len(slice2) {
+		return false
+	}
+	for _, v := range slice1 {
+		if !intInIntArray(v, slice2) {
+			return false
+		}
+	}
+	return true
+}
+
+func intInIntArray(n int, arr []int) bool {
+	for _,i := range arr {
+		if n == i {
+			return true
+		}
+	}
+	return false
+}
+
+func StringInStringArray(n string, arr []string) bool {
+	for _, i := range arr {
+		if n == i{
+			return true
+		}
+	}
+	return false
+}
+
+func AppendStringIfNotInArr(n string, arr []string) []string {
+	if !StringInStringArray(n, arr){
+		return append(arr, n)
+	}
+	return arr
 }
