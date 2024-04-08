@@ -5,12 +5,48 @@ import (
 	"net/http"
 
 	"github.com/adrianfulla/compiler/backend/automatas"
+	"github.com/adrianfulla/compiler/backend/lexer"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	serve()
-	// makeDirAfd("(a|b)*abb")
+	// serve()
+	// json := makeDirAfd("(a|b)*aab")
+	// afd, err := automatas.JsonToDfa(json)
+	// if err != nil {
+	// 	fmt.Printf("Error al pasar a DFA")
+	// } else {
+	// 	fmt.Printf("AFD [esIn: %s,\n esFin: %s,\n alfabeto:%s,\n transiciones:\n", afd.EstadoInicial, afd.EstadosFinales, afd.Alfabeto)
+	// 	for state, transicion := range afd.Transiciones {
+	// 		fmt.Printf("%s:{\n", state)
+	// 		for sim, next_state := range transicion {
+	// 			fmt.Printf("%s: %s\n", sim, next_state)
+	// 		}
+	// 		fmt.Printf("}\n")
+	// 	}
+	// 	fmt.Printf("]\n")
+	// 	automatas.ExtendedSimulateAfd("aaabcaabb", *afd)
+	// }
+	file := (`(* Lexer para Gramática No. 1 - Expresiones aritméticas simples para variables *)
+
+	(* Introducir cualquier header aqui *)
+	
+	let delim = [' ''\t''\n']
+	let ws = delim+
+	let letter = ['A'-'Z''a'-'z']
+	let digit = ['0'-'9']
+	let id = letter(letter|digit)*
+	
+	rule tokens = 
+		ws
+	  | id        { return ID }               (* Cambie por una acción válida, que devuelva el token *)
+	  | '+'       { return PLUS }
+	  | '*'       { return TIMES }
+	  | '('       { return LPAREN }
+	  | ')'       { return RPAREN }
+	
+	(* Introducir cualquier trailer aqui *)`)
+	lexFile(file)
 
 }
 
@@ -64,7 +100,7 @@ func makeDirAfd(Regex string) []byte {
 			fmt.Println("Error al convertir a JSON:", err)
 			return nil
 		}
-		
+
 		return jsonAfd
 	}
 }
@@ -82,7 +118,11 @@ func makeArboldeNodos(Regex string) []byte {
 			fmt.Println("Error al convertir a JSON:", err)
 			return nil
 		}
-		
+
 		return jsonAfd
 	}
+}
+
+func lexFile(ymlFile string){
+	lexer.LexYmlFile(ymlFile)
 }

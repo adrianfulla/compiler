@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"reflect"
+	"unicode"
 )
 
 func ConcatenateTwoArrays(arr1 []interface{}, arr2 []interface{}) ([]interface{}, error) {
@@ -38,7 +39,7 @@ func CompareSlices(slice1, slice2 []int) bool {
 }
 
 func intInIntArray(n int, arr []int) bool {
-	for _,i := range arr {
+	for _, i := range arr {
 		if n == i {
 			return true
 		}
@@ -48,7 +49,7 @@ func intInIntArray(n int, arr []int) bool {
 
 func StringInStringArray(n string, arr []string) bool {
 	for _, i := range arr {
-		if n == i{
+		if n == i {
 			return true
 		}
 	}
@@ -56,8 +57,21 @@ func StringInStringArray(n string, arr []string) bool {
 }
 
 func AppendStringIfNotInArr(n string, arr []string) []string {
-	if !StringInStringArray(n, arr){
+	if !StringInStringArray(n, arr) {
 		return append(arr, n)
 	}
 	return arr
+}
+
+func RuneType(r rune) string{
+	switch {
+	case unicode.IsUpper(r):
+		return "upper"
+	case unicode.IsLower(r):
+		return "lower"
+	case unicode.IsNumber(r):
+		return "number"
+	default:
+		return "other"
+	}
 }

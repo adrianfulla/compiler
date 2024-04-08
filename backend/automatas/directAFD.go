@@ -3,9 +3,11 @@ package automatas
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/adrianfulla/compiler/backend/utils"
 	"strconv"
 	"strings"
+
+	"github.com/adrianfulla/compiler/backend/utils"
+	// "time"
 )
 
 type Dstate struct {
@@ -106,6 +108,7 @@ func NewDirectAfd(regex string) *DirectAfd {
 	afd.estadoActual = 0
 	afd.Arbol = &ArbolExpresion{}
 	afd.Arbol.ConstruirArbol(regex + "#^")
+	// afd.Arbol.imprimirDetalle()
 	afd.construirAfd()
 
 	return afd
@@ -137,18 +140,23 @@ func (afd *DirectAfd) construirAfd() {
 	pendientes.Push(afd.estadoInicial)
 	procesados := utils.NewStack()
 
+	// fmt.Print("Simbolos del arbol\n")
+	// for x, y := range afd.Arbol.Simbolos{
+	// 	fmt.Printf("Posicion %d con valor %s, followpos %d\n", x, y.Valor, y.Followpos)
+	// }
 	for pendientes.Size() > 0 {
 		curr_estado := pendientes.Pop().(*Dstate)
 		if !procesados.ElemInStack(curr_estado.nombre) {
 			simbolos_a_pos := make(map[string][]int)
 			for _, pos := range curr_estado.posicion {
+				// fmt.Printf("indice %d Posicion %d\n", xy, pos)
 				simbolo := afd.Arbol.Simbolos[pos].Valor
 				if !strings.ContainsAny("ε#", simbolo) {
 					if simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] == nil {
 						simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = make([]int, 0)
 					}
 					simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = append(simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos...)
-
+					// fmt.Printf("Simbolos a pos: [simbolo:%s, pos: %d, followpos: %d]\n", simbolo, simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos)
 				}
 			}
 
@@ -160,7 +168,19 @@ func (afd *DirectAfd) construirAfd() {
 				}
 			}
 			procesados.Push(curr_estado.nombre)
+			// fmt.Print("\nPendientes\n")
+			// printDstateStack(*pendientes)
+			// fmt.Print("\nProcesados\n")
+			// printDstateStack(*procesados)
+			// fmt.Print("\nEstaods\n")
+			// for val, state := range afd.estados {
+			// 	fmt.Printf("Estado %s con nombre %s tiene %d con transiciones\n", val, state.nombre, state.posicion)
+			// 	for sim, trans := range state.transiciones {
+			// 		fmt.Printf("Simbolo %s tiene transicion a %s\n", sim, trans.nombre)
+			// 	}
+			// }
 		}
+		// time.Sleep(1 * time.Second)
 	}
 }
 

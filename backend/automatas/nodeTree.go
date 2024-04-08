@@ -3,8 +3,10 @@ package automatas
 import (
 	"encoding/json"
 	"unicode"
+
 	// "strings"
 	"fmt"
+
 	"github.com/adrianfulla/compiler/backend/utils"
 )
 
@@ -126,7 +128,7 @@ func (arbol *ArbolExpresion) visitNodo(nodo *utils.Nodo) {
 
 			arbol.Simbolos[pos].Followpos = append(arbol.Simbolos[pos].Followpos, nodo.Derecho.Firstpos...)
 		}
-	} else if nodo.Valor == "^" {
+	} else if nodo.Valor == "*" {
 		for _, pos := range nodo.Lastpos {
 			if arbol.Simbolos[pos].Followpos == nil {
 				arbol.Simbolos[pos].Followpos = make([]int, 0)
