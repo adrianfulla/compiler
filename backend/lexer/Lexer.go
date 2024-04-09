@@ -22,7 +22,9 @@ func LexYmlFile(fileYml string) (*utils.Stack, error) {
 	// automatas.InfixToPosfix("\"abc\\\\\\t\"")
 	// automatas.InfixToPosfix("['A'-'Z''a'-'z']")
 	// automatas.InfixToPosfix("[^'B'-'F']")
-	automatas.InfixToPosfix("['A'-'C']#['B'-'F']")
+	automatas.ExtendedInfixToPosfix("['A'-'C']#['B'-'F']")
+	// automatas.ExtendedInfixToPosfix("(a)")
+	// automatas.ExtendedInfixToPosfix("(['A'-'Z'])")
 
 	stack, err := lex.parseFile()
 	if err != nil {

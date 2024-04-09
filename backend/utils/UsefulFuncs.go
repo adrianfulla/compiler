@@ -75,3 +75,4 @@ func RuneType(r rune) string{
 		return "other"
 	}
 }
+

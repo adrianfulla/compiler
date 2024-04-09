@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	// serve()
+	serve()
 	// json := makeDirAfd("(a|b)*aab")
 	// afd, err := automatas.JsonToDfa(json)
 	// if err != nil {
@@ -74,6 +74,19 @@ func serve() {
 	r.POST("/automata/afd", func(c *gin.Context) {
 		var request struct {
 			Regex string `json:"regex"`
+		}
+
+		if err := c.BindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		response := makeDirAfd(request.Regex)
+		c.Data(http.StatusOK, "application/json", response)
+	})
+	r.POST("/automata/afd/", func(c *gin.Context) {
+		var request struct {
+			Regex string 				`json:"regex"`
+			// Afd   	`json:"afd"`
 		}
 
 		if err := c.BindJSON(&request); err != nil {

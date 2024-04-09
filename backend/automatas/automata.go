@@ -13,6 +13,42 @@ type valChar struct {
 	value     rune
 	isEscaped bool
 }
+func Difference(a, b []valChar) ([]rune) {
+    // Crear mapas para guardar los elementos de cada array
+    mapA := make(map[rune]bool)
+    mapB := make(map[rune]bool)
+	diffAB := []rune{}
+
+
+    // Llenar el mapa para el primer array
+    for _, item := range a {
+		
+        mapA[item.value] = true
+    }
+
+    // Llenar el mapa para el segundo array
+    for _, item := range b {
+        mapB[item.value] = true
+    }
+
+    // Encontrar elementos que están en A pero no en B
+    for _, item := range a {
+        if !mapB[item.value] {
+            diffAB = append(diffAB, item.value)
+        }
+    }
+
+    // Encontrar elementos que están en B pero no en A
+    for _, item := range b {
+		// fmt.Printf("in b: %s\n", string(item.value))
+        if !mapA[item.value] {
+			// fmt.Printf("in b: %s\n", string(item.value))
+            diffAB = append(diffAB, item.value)
+        }
+    }
+
+    return diffAB
+}
 
 func appendChar(exp strings.Builder, char valChar) strings.Builder {
 	temp := exp.String()
@@ -46,11 +82,56 @@ func validation(regex string) (string, error) {
 	if len(regex) == 0 {
 		return "", fmt.Errorf("ingrese una expresión regular")
 	}
+
+	if strings.Contains(regex, "^") || strings.Contains(regex, ".") {
+		return "", fmt.Errorf("el símbolo de concatenación se agregará automáticamente después. Ingrese su expresión sin el símbolo de concatenación")
+	}
+
+	for _, c := range regex {
+		if !unicode.IsLetter(c) && !unicode.IsNumber(c) && !strings.ContainsRune("*+?|()ε", c) {
+			return "", fmt.Errorf("carácter no válido en la expresión regular")
+		}
+	}
+
+	stack := []rune{}
+	for _, char := range regex {
+		switch char {
+		case '(':
+			stack = append(stack, char)
+		case ')':
+			if len(stack) == 0 {
+				return "", fmt.Errorf("paréntesis no balanceados en la expresión regular")
+			}
+			stack = stack[:len(stack)-1] // Simula el pop
+		}
+	}
+
+	if len(stack) > 0 {
+		return "", fmt.Errorf("paréntesis no balanceados en la expresión regular")
+	}
+
+	operators := "*+?|"
+	for i := 0; i < len(regex)-1; i++ {
+		currentChar := regex[i]
+		nextChar := regex[i+1]
+
+		if strings.ContainsRune(operators, rune(currentChar)) && strings.ContainsRune(operators, rune(nextChar)) && nextChar != '|' {
+			return "", fmt.Errorf("sintaxis incorrecta de operadores en la expresión regular")
+		}
+	}
+	return regex, nil
+}
+
+func extendedValidation(regex string) (string, error) {
+	if len(regex) == 0 {
+		return "", fmt.Errorf("ingrese una expresión regular")
+	}
 	var expandedRegex strings.Builder
 	inApostrophe := false
 	inDoubleApostrophe := false
 	isEscaped := false
 	inCharSet := false
+	inParentheses := false
 	prevCharacterSet := []valChar{}
 	isDiffofCharSets := false
 	isNotCharacterSet := false
@@ -135,33 +216,73 @@ func validation(regex string) (string, error) {
 			} else if !inDoubleApostrophe {
 				if isDiffofCharSets{
 					fmt.Printf("diff of charset\n")
-				}
-				if stack.Size() == 1 {
+					newCharacterSet := []valChar{}
+					for stack.Size() > 0{
+						if len(newCharacterSet) < 2 {
+							newCharacterSet = append(newCharacterSet, stack.Pop().(valChar))
+						}
+						if len(newCharacterSet) == 2 {
+							newCharSet, _ := expandBrackets(newCharacterSet, isNotCharacterSet)
+							newCharacterSet = []valChar{}
+							for newCharSet.Size() > 0{
+								newCharacterSet = append(newCharacterSet, newCharSet.Pop().(valChar))
+							}
+						}
+					}
+					oldCharSet, _ := expandBrackets(prevCharacterSet, false)
+					oldCharacterSet := []valChar{}
+					for oldCharSet.Size() > 0{
+						oldCharacterSet = append(oldCharacterSet, oldCharSet.Pop().(valChar))
+					}
+					diff := Difference(oldCharacterSet, newCharacterSet)
+					tExp := strings.Builder{}
+					for x, i := range diff{
+						if x != 0{
+							tExp = appendCharOR(tExp, valChar{
+								value: i,
+								isEscaped: false,
+							})
+						}else{
+							tExp = appendChar(tExp, valChar{
+								value: i,
+								isEscaped: false,
+							})
+						}
+						
+					}
+					expandedRegex = tExp
+					
+				}else if stack.Size() == 1 {
 					expandedRegex = appendChar(expandedRegex, stack.Pop().(valChar))
 				} else if math.Mod(float64(stack.Size()), 2) == 0 {
 					characterSet := []valChar{}
 					fmt.Printf("Stack size %d\n", stack.Size())
 					for stack.Size() > 0 {
-						fmt.Printf("CharSet size %d\n", len(characterSet))
 						if len(characterSet) < 2 {
 							characterSet = append(characterSet, stack.Pop().(valChar))
 						}
 						if len(characterSet) == 2 {
 							tCharSet, err := expandBrackets(characterSet, isNotCharacterSet)
 							prevCharacterSet = append(prevCharacterSet, characterSet...)
+							holdString := strings.Builder{}
 							if err != nil {
 								fmt.Printf("Error\n")
 								return "", fmt.Errorf("invalid character set")
 							}
+							holdString = appendChar(holdString, tCharSet.Pop().(valChar))
 							for tCharSet.Size() > 0 {
-								expandedRegex = appendCharOR(expandedRegex, tCharSet.Pop().(valChar))
+								holdString = appendCharOR(holdString, tCharSet.Pop().(valChar))
 							}
+							t := strings.Builder{}
+							t.WriteString(expandedRegex.String())
+							t.WriteString(holdString.String())
+							expandedRegex = t 
 							characterSet = []valChar{}
 						}
 					}
 				}
-			} else {
 				
+				inCharSet = false
 			}
 		case '-':
 			if !inCharSet {
@@ -190,7 +311,7 @@ func validation(regex string) (string, error) {
 				}
 			}
 		case '#':
-			if !inCharSet {
+			if inApostrophe|| inDoubleApostrophe  {
 				stack.Push(valChar{
 					value:     char,
 					isEscaped: isEscaped,
@@ -199,13 +320,64 @@ func validation(regex string) (string, error) {
 			}else{
 				isDiffofCharSets = true
 			}
-		default:
-			stack.Push(valChar{
-				value:     char,
-				isEscaped: isEscaped,
-			})
-			if isEscaped {
+		case '(':
+			if !inParentheses && (!inApostrophe || !inDoubleApostrophe){
+				inParentheses = true
+				temp := expandedRegex.String()
+				expandedRegex = strings.Builder{}
+				expandedRegex.WriteString(temp+string(char))
+			}else{
+				stack.Push(valChar{
+					value:     char,
+					isEscaped: isEscaped,
+				})
+				if isEscaped {
+					isEscaped = false
+				}
+			}
+		case ')':
+			if !inParentheses && !(inApostrophe || inDoubleApostrophe) {
+				return "", fmt.Errorf("invalid character: %s", string(char))
+			} else if  inApostrophe ||inDoubleApostrophe{
+				stack.Push(valChar{
+					value:     char,
+					isEscaped: isEscaped,
+				})
 				isEscaped = false
+			} else if !inDoubleApostrophe {
+				count := 1
+				for inParentheses{
+					temp := strings.Builder{}
+					str := expandedRegex.String()
+					val := str[len(str)-count:len(str)-1]
+					fmt.Printf("exp in par %s\n",val)
+					temp.WriteString(str)
+					if val == "(" {
+						inParentheses = false
+						fmt.Printf("Inside par: %s\n", temp.String())
+					}else{
+						temp.WriteString(val)
+						count++
+					}
+					// fmt.Printf("string in parentheses%s\n", )
+				}
+				temp := expandedRegex.String()
+				expandedRegex = strings.Builder{}
+				expandedRegex.WriteString(temp+string(char))
+			}
+		default:
+			if inApostrophe || inDoubleApostrophe || inCharSet{
+				stack.Push(valChar{
+					value:     char,
+					isEscaped: isEscaped,
+				})
+				if isEscaped {
+					isEscaped = false
+				}
+			}else {
+				temp := expandedRegex.String()
+				expandedRegex = strings.Builder{}
+				expandedRegex.WriteString(temp+string(char))
 			}
 		}
 	}
@@ -473,6 +645,21 @@ func shuntingYard(infix string) string {
 func InfixToPosfix(regex string) (string, error) {
 	validatedRegex, err := validation(regex)
 	if err != nil {
+		return "", err
+	} else {
+		convertedRegex, err := convertQuestionMarkAndPlusSign(validatedRegex)
+		if err != nil {
+			return "", err
+		} else {
+			return shuntingYard(convertedRegex), nil
+		}
+	}
+}
+
+func ExtendedInfixToPosfix(regex string) (string, error) {
+	validatedRegex, err := extendedValidation(regex)
+	if err != nil {
+		fmt.Print(err)
 		return "", err
 	} else {
 		convertedRegex, err := convertQuestionMarkAndPlusSign(validatedRegex)

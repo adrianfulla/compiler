@@ -3,7 +3,6 @@ package automatas
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/adrianfulla/compiler/backend/utils"
 )
 

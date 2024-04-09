@@ -26,13 +26,9 @@
   </template>
   
   <script>
-  import { ref, computed, watch } from 'vue'
-  import { VNetworkGraph, defineConfigs } from 'v-network-graph'
   
   export default {
-    components: {
-      VNetworkGraph
-    },
+
     props: {
       estados: Array,
       alfabeto: Array,

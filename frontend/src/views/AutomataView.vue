@@ -5,7 +5,7 @@
         <button class="btn btn-primary" @click="generateTree">Generar</button>
     </div>
     <div class="card" v-if="mostrar_automata">
-      <div class="container mt-4" >
+      <div class="container mt-4 mb-4" >
         <div class="row">
           <div class="col-md-4" >
             <div class="card">
@@ -24,7 +24,7 @@
             Automata Determinista
           </div>
           <div class="card-body">
-            <DirAFD :regex="regex"/>
+            <DirAFD :regex="regex" @afd="handleAfdReturn"/>
           </div>
         </div>
         </div>  
@@ -45,7 +45,8 @@
     data() {
       return {
         regex: '',
-        mostrar_automata: false 
+        mostrar_automata: false,
+        afd: null
       };
     },
     methods:{
@@ -53,6 +54,10 @@
                 if (this.regex.length > 0) {
                 this.mostrar_automata = true;
             }
+        },
+        handleAfdReturn(afd){
+          console.log(afd)
+          this.afd = afd
         }
     },
     created() {
