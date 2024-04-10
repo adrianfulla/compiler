@@ -2,81 +2,13 @@ package automatas
 
 import (
 	"fmt"
-	"math"
+	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/adrianfulla/compiler/backend/utils"
 )
 
-type valChar struct {
-	value     rune
-	isEscaped bool
-}
-func Difference(a, b []valChar) ([]rune) {
-    // Crear mapas para guardar los elementos de cada array
-    mapA := make(map[rune]bool)
-    mapB := make(map[rune]bool)
-	diffAB := []rune{}
-
-
-    // Llenar el mapa para el primer array
-    for _, item := range a {
-		
-        mapA[item.value] = true
-    }
-
-    // Llenar el mapa para el segundo array
-    for _, item := range b {
-        mapB[item.value] = true
-    }
-
-    // Encontrar elementos que están en A pero no en B
-    for _, item := range a {
-        if !mapB[item.value] {
-            diffAB = append(diffAB, item.value)
-        }
-    }
-
-    // Encontrar elementos que están en B pero no en A
-    for _, item := range b {
-		// fmt.Printf("in b: %s\n", string(item.value))
-        if !mapA[item.value] {
-			// fmt.Printf("in b: %s\n", string(item.value))
-            diffAB = append(diffAB, item.value)
-        }
-    }
-
-    return diffAB
-}
-
-func appendChar(exp strings.Builder, char valChar) strings.Builder {
-	temp := exp.String()
-	exp.Reset()
-	// fmt.Printf("Writing %s\n", string(char.value))
-	exp.WriteRune('\'')
-	if char.isEscaped {
-		exp.WriteRune('\\')
-	}
-	exp.WriteRune(char.value)
-	exp.WriteRune('\'')
-	exp.WriteString(temp)
-	return exp
-}
-func appendCharOR(exp strings.Builder, char valChar) strings.Builder {
-	temp := exp.String()
-	exp.Reset()
-	// fmt.Printf("Writing %s\n", string(char.value))
-	exp.WriteRune('\'')
-	if char.isEscaped {
-		exp.WriteRune('\\')
-	}
-	exp.WriteRune(char.value)
-	exp.WriteRune('\'')
-	exp.WriteRune('|')
-	exp.WriteString(temp)
-	return exp
-}
 
 func validation(regex string) (string, error) {
 	if len(regex) == 0 {
@@ -122,312 +54,375 @@ func validation(regex string) (string, error) {
 	return regex, nil
 }
 
+func escapeRune(char rune) (rune, error){
+	// Crear la secuencia de escape como una cadena
+    escapeSequence := fmt.Sprintf("\\%c", char)
+    // Interpretar la secuencia de escape
+    decodedString, err := strconv.Unquote(`"` + escapeSequence + `"`)
+    if err != nil {
+        return 0, err
+    }
+    // Como sabemos que es una secuencia de escape, debe tener un solo carácter
+    return []rune(decodedString)[0], nil
+}
+
 func extendedValidation(regex string) (string, error) {
 	if len(regex) == 0 {
 		return "", fmt.Errorf("ingrese una expresión regular")
 	}
-	var expandedRegex strings.Builder
-	inApostrophe := false
-	inDoubleApostrophe := false
-	isEscaped := false
-	inCharSet := false
-	inParentheses := false
-	prevCharacterSet := []valChar{}
-	isDiffofCharSets := false
-	isNotCharacterSet := false
-	stack := utils.Stack{}
+	regexDLinkedList := utils.DoublyLinkedList{}
+	
 	for _, char := range regex {
-		fmt.Printf("expanded: %s\n", expandedRegex.String())
-		fmt.Printf("Char: %s,isEsc: %t, isApo: %t, isDoubleApo: %t, inCharSet: %t\n", string(char), isEscaped, inApostrophe, inDoubleApostrophe, inCharSet)
-		switch char {
-		case '\'':
-			if !inCharSet {
-				if inApostrophe && !isEscaped {
-					if stack.Size() > 1 {
-						return "", fmt.Errorf("invalid character in single apostrophe")
-					}
-					for stack.Size() > 0 {
-						expandedRegex = appendChar(expandedRegex, stack.Pop().(valChar))
-					}
-					inApostrophe = false
-				} else if isEscaped || inDoubleApostrophe {
-					stack.Push(valChar{
-						value:     char,
-						isEscaped: isEscaped,
-					})
-					isEscaped = false
-				} else if !inDoubleApostrophe {
-					inApostrophe = true
-				} else {
-					return "", fmt.Errorf("invalid character: %s", string(char))
+		regexDLinkedList.Append(utils.RegexToken{
+			Value: []rune{char},
+		})
+	}
+	currentToken := regexDLinkedList.Head
+	for currentToken != nil {
+		fmt.Println("")
+		fmt.Println("Forward")
+		regexDLinkedList.PrintForward()
+		fmt.Println("Reverse")
+		regexDLinkedList.PrintReverse()
+		char := currentToken.Value.(utils.RegexToken).Value
+		if len(char) == 1{
+			char := char[len(char)-1]
+			fmt.Printf("Encontrado:%s\n", string(char))
+			switch char{
+			case '\'':
+				fmt.Printf("Case:%s\n", string(char))
+				if currentToken.Next == nil{
+					return "", fmt.Errorf("regex parsing error, found extra '")
 				}
-			}
-		case '"':
-			if inDoubleApostrophe && !isEscaped {
-				for stack.Size() > 0 {
-					expandedRegex = appendChar(expandedRegex, stack.Pop().(valChar))
+				prevCharToken :=utils.RegexToken{
+					Value: []rune{'('},
+					IsOperator: "OPENPARENTHESES",
 				}
-				inDoubleApostrophe = false
-			} else if inApostrophe || isEscaped {
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				isEscaped = false
-			} else if !inApostrophe {
-				inDoubleApostrophe = true
-			} else {
-				return "", fmt.Errorf("invalid character: %s", string(char))
-			}
-		case '\\':
-			if !inApostrophe && !inDoubleApostrophe {
-				return "", fmt.Errorf("invalid character escape")
-			}
-			if isEscaped {
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				isEscaped = false
-			} else {
-				isEscaped = true
-			}
-		case '[':
-			if inApostrophe || inDoubleApostrophe {
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				isEscaped = false
-			} else if inCharSet {
-				return "", fmt.Errorf("invalid character: %s", string(char))
-			} else {
-				inCharSet = true
-			}
-		case ']':
-			if !inCharSet && !(inApostrophe || inDoubleApostrophe) {
-				return "", fmt.Errorf("invalid character: %s", string(char))
-			} else if  inApostrophe ||inDoubleApostrophe{
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				isEscaped = false
-			} else if !inDoubleApostrophe {
-				if isDiffofCharSets{
-					fmt.Printf("diff of charset\n")
-					newCharacterSet := []valChar{}
-					for stack.Size() > 0{
-						if len(newCharacterSet) < 2 {
-							newCharacterSet = append(newCharacterSet, stack.Pop().(valChar))
-						}
-						if len(newCharacterSet) == 2 {
-							newCharSet, _ := expandBrackets(newCharacterSet, isNotCharacterSet)
-							newCharacterSet = []valChar{}
-							for newCharSet.Size() > 0{
-								newCharacterSet = append(newCharacterSet, newCharSet.Pop().(valChar))
-							}
-						}
+				if currentToken.Prev == nil{
+					regexDLinkedList.Head = currentToken.Next
+					regexDLinkedList.Prepend(prevCharToken)
+					currentToken = regexDLinkedList.Head
+				}else{
+					newPrevToken := utils.LinkedNode{
+						Value: prevCharToken,
+						Next: currentToken.Next,
+						Prev: currentToken.Prev,
 					}
-					oldCharSet, _ := expandBrackets(prevCharacterSet, false)
-					oldCharacterSet := []valChar{}
-					for oldCharSet.Size() > 0{
-						oldCharacterSet = append(oldCharacterSet, oldCharSet.Pop().(valChar))
-					}
-					diff := Difference(oldCharacterSet, newCharacterSet)
-					tExp := strings.Builder{}
-					for x, i := range diff{
-						if x != 0{
-							tExp = appendCharOR(tExp, valChar{
-								value: i,
-								isEscaped: false,
-							})
-						}else{
-							tExp = appendChar(tExp, valChar{
-								value: i,
-								isEscaped: false,
-							})
-						}
-						
-					}
-					expandedRegex = tExp
-					
-				}else if stack.Size() == 1 {
-					expandedRegex = appendChar(expandedRegex, stack.Pop().(valChar))
-				} else if math.Mod(float64(stack.Size()), 2) == 0 {
-					characterSet := []valChar{}
-					fmt.Printf("Stack size %d\n", stack.Size())
-					for stack.Size() > 0 {
-						if len(characterSet) < 2 {
-							characterSet = append(characterSet, stack.Pop().(valChar))
-						}
-						if len(characterSet) == 2 {
-							tCharSet, err := expandBrackets(characterSet, isNotCharacterSet)
-							prevCharacterSet = append(prevCharacterSet, characterSet...)
-							holdString := strings.Builder{}
-							if err != nil {
-								fmt.Printf("Error\n")
-								return "", fmt.Errorf("invalid character set")
-							}
-							holdString = appendChar(holdString, tCharSet.Pop().(valChar))
-							for tCharSet.Size() > 0 {
-								holdString = appendCharOR(holdString, tCharSet.Pop().(valChar))
-							}
-							t := strings.Builder{}
-							t.WriteString(expandedRegex.String())
-							t.WriteString(holdString.String())
-							expandedRegex = t 
-							characterSet = []valChar{}
-						}
-					}
+					currentToken.Next.Prev = &newPrevToken
+					currentToken.Prev.Next = &newPrevToken
+					currentToken = currentToken.Prev.Prev.Next.Next
 				}
+
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Next.Value)
 				
-				inCharSet = false
-			}
-		case '-':
-			if !inCharSet {
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				isEscaped = false
-			}
-		case '^':
-			if !inCharSet && (!inApostrophe || !inDoubleApostrophe) {
-				return "", fmt.Errorf("invalid character: %s", string(char))
-			} else if inCharSet {
-				if !isNotCharacterSet {
-					isNotCharacterSet = true
-				} else {
-					return "", fmt.Errorf("invalid character: %s", string(char))
+				currentToken = currentToken.Next
+
+				catChar := utils.RegexToken{
+					Value: []rune{'^'},
+					IsOperator:"CATOPERATOR",
 				}
-			} else {
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				if isEscaped {
-					isEscaped = false
-				}
-			}
-		case '#':
-			if inApostrophe|| inDoubleApostrophe  {
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				isEscaped = false
-			}else{
-				isDiffofCharSets = true
-			}
-		case '(':
-			if !inParentheses && (!inApostrophe || !inDoubleApostrophe){
-				inParentheses = true
-				temp := expandedRegex.String()
-				expandedRegex = strings.Builder{}
-				expandedRegex.WriteString(temp+string(char))
-			}else{
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				if isEscaped {
-					isEscaped = false
-				}
-			}
-		case ')':
-			if !inParentheses && !(inApostrophe || inDoubleApostrophe) {
-				return "", fmt.Errorf("invalid character: %s", string(char))
-			} else if  inApostrophe ||inDoubleApostrophe{
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				isEscaped = false
-			} else if !inDoubleApostrophe {
-				count := 1
-				for inParentheses{
-					temp := strings.Builder{}
-					str := expandedRegex.String()
-					val := str[len(str)-count:len(str)-1]
-					fmt.Printf("exp in par %s\n",val)
-					temp.WriteString(str)
-					if val == "(" {
-						inParentheses = false
-						fmt.Printf("Inside par: %s\n", temp.String())
-					}else{
-						temp.WriteString(val)
-						count++
+				for currentToken.Next.Value.(utils.RegexToken).Value[0] != '\''{
+					newNextToken := utils.LinkedNode{
+						Value: catChar,
+						Next: currentToken.Next,
+						Prev: currentToken,
 					}
-					// fmt.Printf("string in parentheses%s\n", )
+					currentToken.Next.Prev = &newNextToken
+					currentToken.Next = &newNextToken
+					currentToken = newNextToken.Next
 				}
-				temp := expandedRegex.String()
-				expandedRegex = strings.Builder{}
-				expandedRegex.WriteString(temp+string(char))
-			}
-		default:
-			if inApostrophe || inDoubleApostrophe || inCharSet{
-				stack.Push(valChar{
-					value:     char,
-					isEscaped: isEscaped,
-				})
-				if isEscaped {
-					isEscaped = false
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				
+				nextChar := utils.RegexToken{
+					Value: []rune{')'},
+					IsOperator: "CLOSEPARENTHESES",
 				}
-			}else {
-				temp := expandedRegex.String()
-				expandedRegex = strings.Builder{}
-				expandedRegex.WriteString(temp+string(char))
+				if currentToken.Next.Next == nil{
+					// fmt.Println("Encontro null")
+					// fmt.Printf("Current Token %s \n", currentToken.Value)
+					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+					regexDLinkedList.Tail = currentToken
+					regexDLinkedList.Append(nextChar)
+					
+				}else{
+					newNextToken := utils.LinkedNode{
+						Value: nextChar,
+						Next: currentToken.Next.Next,
+						Prev: currentToken,
+					}
+					currentToken.Next.Next.Prev = &newNextToken
+					currentToken.Next = &newNextToken
+				}
+				currentToken = currentToken.Next
+			case '"':
+				fmt.Printf("Case:%s\n", string(char))
+				if currentToken.Next == nil{
+					return "", fmt.Errorf("regex parsing error, found extra '")
+				}
+				prevCharToken :=utils.RegexToken{
+					Value: []rune{'('},
+					IsOperator: "OPENPARENTHESES",
+				}
+				if currentToken.Prev == nil{
+					regexDLinkedList.Head = currentToken.Next
+					regexDLinkedList.Prepend(prevCharToken)
+					currentToken = regexDLinkedList.Head
+				}else{
+					newPrevToken := utils.LinkedNode{
+						Value: prevCharToken,
+						Next: currentToken.Next,
+						Prev: currentToken.Prev,
+					}
+					currentToken.Next.Prev = &newPrevToken
+					currentToken.Prev.Next = &newPrevToken
+					currentToken = currentToken.Prev.Prev.Next.Next
+				}
+
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Next.Value)
+				
+				currentToken = currentToken.Next
+
+				catChar := utils.RegexToken{
+					Value: []rune{'^'},
+					IsOperator:"CATOPERATOR",
+				}
+				for currentToken.Next.Value.(utils.RegexToken).Value[0] != '"'{
+					newNextToken := utils.LinkedNode{
+						Value: catChar,
+						Next: currentToken.Next,
+						Prev: currentToken,
+					}
+					currentToken.Next.Prev = &newNextToken
+					currentToken.Next = &newNextToken
+					currentToken = newNextToken.Next
+				}
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				
+				nextChar := utils.RegexToken{
+					Value: []rune{')'},
+					IsOperator: "CLOSEPARENTHESES",
+				}
+				if currentToken.Next.Next == nil{
+					// fmt.Println("Encontro null")
+					// fmt.Printf("Current Token %s \n", currentToken.Value)
+					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+					regexDLinkedList.Tail = currentToken
+					regexDLinkedList.Append(nextChar)
+					
+				}else{
+					newNextToken := utils.LinkedNode{
+						Value: nextChar,
+						Next: currentToken.Next.Next,
+						Prev: currentToken,
+					}
+					currentToken.Next.Next.Prev = &newNextToken
+					currentToken.Next = &newNextToken
+				}
+				currentToken = currentToken.Next
+			case '_':
+				fmt.Printf("Case:%s\n", string(char))
+				
+				prevChar :=utils.RegexToken{
+					Value: []rune{'('},
+					IsOperator: "OPENPARENTHESES",
+				}
+				nextChar := utils.RegexToken{
+					Value: []rune{')'},
+					IsOperator: "CLOSEPARENTHESES",
+				}
+				if currentToken.Prev == nil{
+					regexDLinkedList.Prepend(prevChar)
+				}else{
+					newPrevToken := utils.LinkedNode{
+						Value: prevChar,
+						Next: currentToken,
+						Prev: currentToken.Prev,
+					}
+					currentToken.Prev.Next = &newPrevToken
+				}
+
+				orChar := utils.RegexToken{
+					Value: []rune{'|'},
+					IsOperator: "OROPERATOR",
+				}
+				nextToken := currentToken.Next
+				fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				for i := 0; i <= 254; i++{
+					// fmt.Printf("Including %s\n", rune(i))
+					currentToken.Value = utils.RegexToken{
+						Value: []rune{rune(i)},
+					}
+					
+					currentToken.Next = &utils.LinkedNode{
+						Value: orChar,
+						Next: &utils.LinkedNode{},
+						Prev: currentToken,
+					}
+					currentToken.Next.Next.Prev = currentToken
+					currentToken.Next.Next.Next = nextToken
+
+					currentToken = currentToken.Next.Next
+				}
+				// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				
+				currentToken.Value = utils.RegexToken{
+					Value: []rune{rune(255)},
+				}
+				if currentToken.Next == nil{
+					regexDLinkedList.Append(nextChar)
+				}else{
+					newNextToken := utils.LinkedNode{
+						Value: nextChar,
+						Next: currentToken.Next,
+						Prev: currentToken,
+					}
+					currentToken.Next.Prev = &newNextToken
+					currentToken.Next = &newNextToken
+				}
+			case '[':
+			// 	fmt.Printf("Case:%s\n", string(char))
+			// 	if currentToken.Next == nil{
+			// 		return "", fmt.Errorf("regex parsing error, found extra '")
+			// 	}
+			// 	prevCharToken :=utils.RegexToken{
+			// 		Value: []rune{'('},
+			// 		IsOperator: "OPENPARENTHESES",
+			// 	}
+			// 	if currentToken.Prev == nil{
+			// 		regexDLinkedList.Head = currentToken.Next
+			// 		regexDLinkedList.Prepend(prevCharToken)
+			// 		currentToken = regexDLinkedList.Head
+			// 	}else{
+			// 		newPrevToken := utils.LinkedNode{
+			// 			Value: prevCharToken,
+			// 			Next: currentToken.Next,
+			// 			Prev: currentToken.Prev,
+			// 		}
+			// 		currentToken.Next.Prev = &newPrevToken
+			// 		currentToken.Prev.Next = &newPrevToken
+			// 		currentToken = currentToken.Prev.Prev.Next.Next
+			// 	}
+
+			// 	// fmt.Printf("Current Token %s \n", currentToken.Value)
+			// 	// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+			// 	// fmt.Printf("Next Token %s \n", currentToken.Next.Next.Value)
+				
+			// 	currentToken = currentToken.Next
+
+			// 	catChar := utils.RegexToken{
+			// 		Value: []rune{'^'},
+			// 		IsOperator:"CATOPERATOR",
+			// 	}
+			// 	for currentToken.Next.Value.(utils.RegexToken).Value[0] != '"'{
+			// 		newNextToken := utils.LinkedNode{
+			// 			Value: catChar,
+			// 			Next: currentToken.Next,
+			// 			Prev: currentToken,
+			// 		}
+			// 		currentToken.Next.Prev = &newNextToken
+			// 		currentToken.Next = &newNextToken
+			// 		currentToken = newNextToken.Next
+			// 	}
+			// 	// fmt.Printf("Current Token %s \n", currentToken.Value)
+			// 	// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				
+			// 	nextChar := utils.RegexToken{
+			// 		Value: []rune{')'},
+			// 		IsOperator: "CLOSEPARENTHESES",
+			// 	}
+			// 	if currentToken.Next.Next == nil{
+			// 		// fmt.Println("Encontro null")
+			// 		// fmt.Printf("Current Token %s \n", currentToken.Value)
+			// 		// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+			// 		regexDLinkedList.Tail = currentToken
+			// 		regexDLinkedList.Append(nextChar)
+					
+			// 	}else{
+			// 		newNextToken := utils.LinkedNode{
+			// 			Value: nextChar,
+			// 			Next: currentToken.Next.Next,
+			// 			Prev: currentToken,
+			// 		}
+			// 		currentToken.Next.Next.Prev = &newNextToken
+			// 		currentToken.Next = &newNextToken
+			// 	}
+			// 	currentToken = currentToken.Next
+			case ']':
+				return "", fmt.Errorf("unexpected closing bracket found at regex")
+			case '(':
+			case ')':
+			case '^':
+			case '#':
+			case '*':
+			case '+':
+			case '?':
+			case '|':
+			
+			default:
+				fmt.Printf("Default Case:%s\n", string(char))
+			// 	if currentToken.Next == nil{
+			// 		return "", fmt.Errorf("regex parsing error, found extra '")
+			// 	}
+			// 	nextChar := currentToken.Next.Value.(utils.RegexToken).Value[0]
+			// 	currentToken.Value = utils.RegexToken{
+			// 		Value: []rune{},
+			// 	}
+			// 	for nextChar != '"'{
+			// 		if currentToken.Next != nil{
+			// 			if nextChar == '\\'{
+			// 				temp, err := escapeRune(currentToken.Next.Next.Value.(utils.RegexToken).Value[0])
+			// 				if err != nil{
+			// 					if currentToken.Next.Next.Value.(utils.RegexToken).Value[0] == '"'{
+			// 						temp = '\''
+			// 					}else{
+			// 						return "", fmt.Errorf("invalid escape sequence in regex")
+			// 					}
+			// 				}
+			// 				nextChar = temp
+			// 				currentToken.Next = currentToken.Next.Next
+			// 			}
+			// 			currentToken.Value = utils.RegexToken{
+			// 				Value: append(currentToken.Value.(utils.RegexToken).Value, nextChar),
+			// 			}
+			// 			currentToken.Next = currentToken.Next.Next
+			// 			nextChar = currentToken.Next.Value.(utils.RegexToken).Value[0]
+			// 		}else{
+			// 			break
+			// 		}
+			// 	}
+			// 	if currentToken.Prev != nil{
+			// 		currentToken.Prev.Next = currentToken
+			// 	}else{
+			// 		regexDLinkedList.Head = currentToken
+			// 	}
+			// 	currentToken.Next = currentToken.Next.Next
+			// }
+		// }
+		
 			}
+			currentToken = currentToken.Next
 		}
 	}
-	fmt.Printf("Finished Expanded: %s\n", expandedRegex.String())
-	// stack := []rune{}
-	// stackOp := []rune{}
-	// inApostrophe := false
-	// for _, char := range regex {
-	// 	fmt.Printf("char in Validation: %s\n", string(char))
-	// 	switch char {
-	// 	case '(':
-	// 		if !inApostrophe{
-	// 			stack = append(stack, char)
-	// 		}
-	// 	case ')':
-	// 		if !inApostrophe{
-	// 			if len(stack) == 0 {
-	// 				return "", fmt.Errorf("paréntesis no balanceados en la expresión regular")
-	// 			}
-	// 			stack = stack[:len(stack)-1] // Simula el pop
-	// 		}
-
-	// 	case '\'':
-	// 		inApostrophe = !inApostrophe
-	// 	}
-	// 	if !inApostrophe{
-	// 		stackOp = append(stackOp, char)
-	// 	}
-	// }
-
-	// if len(stack) > 0 {
-	// 	return "", fmt.Errorf("paréntesis no balanceados en la expresión regular")
-	// }
-
-	// operators := "*+?|"
-	// for i := 0; i < len(regex)-1; i++ {
-	// 	currentChar := regex[i]
-	// 	nextChar := regex[i+1]
-
-	// 	if strings.ContainsRune(operators, rune(currentChar)) && strings.ContainsRune(operators, rune(nextChar)) && nextChar != '|' {
-	// 		return "", fmt.Errorf("sintaxis incorrecta de operadores en la expresión regular")
-	// 	}
-	// }
+	fmt.Println("Forward")
+	regexDLinkedList.PrintForward()
+	fmt.Println("Reverse")
+	regexDLinkedList.PrintReverse()
 	return regex, nil
 }
 
-func expandBrackets(limits []valChar, isNot bool) (utils.Stack, error) {
+
+func expandBrackets(limits []rune, isNot bool) (utils.Stack, error) {
 	result := utils.Stack{}
-	start := limits[1].value
-	end := limits[0].value
+	start := limits[1]
+	end := limits[0]
 	if isNot {
 		if !strings.ContainsRune("Aa0", start) {
 			runeType := utils.RuneType(start)
@@ -442,15 +437,9 @@ func expandBrackets(limits []valChar, isNot bool) (utils.Stack, error) {
 			case "other":
 				return result, fmt.Errorf("character in character set not allowed for start: %s", string(start))
 			}
-			tStart := valChar{
-				value:     val,
-				isEscaped: false,
-			}
-			tEnd := valChar{
-				value:     start - 1,
-				isEscaped: false,
-			}
-			res, err := expandBrackets([]valChar{tEnd, tStart}, false)
+			tStart := val
+			tEnd := start - 1
+			res, err := expandBrackets([]rune{tEnd, tStart}, false)
 			if err != nil {
 				return result, err
 			}
@@ -471,15 +460,9 @@ func expandBrackets(limits []valChar, isNot bool) (utils.Stack, error) {
 			case "other":
 				return result, fmt.Errorf("character in character set not allowed for end: %s", string(start))
 			}
-			tStart := valChar{
-				value:     end + 1,
-				isEscaped: false,
-			}
-			tEnd := valChar{
-				value:     val,
-				isEscaped: false,
-			}
-			res, err := expandBrackets([]valChar{tEnd, tStart}, false)
+			tStart := end + 1
+			tEnd := val
+			res, err := expandBrackets([]rune{tEnd, tStart}, false)
 			if err != nil {
 				return result, err
 			}
@@ -490,10 +473,7 @@ func expandBrackets(limits []valChar, isNot bool) (utils.Stack, error) {
 		return result, nil
 	}
 	for c := start; c <= end; c++ {
-		result.Push(valChar{
-			value:     c,
-			isEscaped: false,
-		})
+		result.Push(c)
 	}
 
 	return result, nil

@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	serve()
+	// serve()
 	// json := makeDirAfd("(a|b)*aab")
 	// afd, err := automatas.JsonToDfa(json)
 	// if err != nil {
