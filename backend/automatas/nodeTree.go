@@ -156,3 +156,9 @@ func (arbol *ArbolExpresion) imprimirDetalle() {
 	fmt.Println("Mostrando detalles de arbol")
 	arbol.Raiz.ImprimirDetalle()
 }
+
+
+func (arbol *ArbolExpresion) ExtendedConstruirArbol(posfix []utils.RegexToken) {
+
+
+}

@@ -114,6 +114,26 @@ func NewDirectAfd(regex string) *DirectAfd {
 	return afd
 }
 
+func ExtendedNewDirectAfdI(regex []utils.RegexToken) *DirectAfd{
+	afd := &DirectAfd{
+		transiciones:      make(map[string]map[string]string),
+		estadosAceptacion: []string{},
+		alfabeto:          []string{},
+		estados:           make(map[string]*Dstate),
+		posiciones:        make(map[int][]int),
+	}
+	afd.estadoActual = 0
+	afd.Arbol = &ArbolExpresion{}
+	afd.Arbol.ExtendedConstruirArbol(append(regex, utils.RegexToken{
+		Value: []rune{'#'},
+		IsOperator: "ENDOFTREE",
+	}))
+	// afd.Arbol.imprimirDetalle()
+	afd.construirAfd()
+
+	return afd
+}
+
 func (afd *DirectAfd) nuevoEstado(position []int, aceptacion bool) *Dstate {
 	nombre := "S" + strconv.Itoa(afd.estadoActual)
 	afd.estadoActual++

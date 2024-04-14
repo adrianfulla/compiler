@@ -15,3 +15,9 @@ type RegexToken struct{
 func (r *RegexToken) String() string{
 	return fmt.Sprintf("{Value: %s, ValueString:%s, IsOperator: %s}", r.Value, r.IsOperator)
 }
+
+type LexToken struct{
+	Token   string `json:"token"`
+	Regex 	string `json:"regex"`
+	Action  string `json:"action"`
+}

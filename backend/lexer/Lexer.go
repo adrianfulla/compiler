@@ -3,13 +3,15 @@ package lexer
 import (
 	// "fmt"
 
+	// "fmt"
+
 	"github.com/adrianfulla/compiler/backend/automatas"
 	"github.com/adrianfulla/compiler/backend/utils"
 )
 
 type Lexer struct {
 	file       string
-	afdStack   utils.Stack
+	afdStack   map[string]automatas.DAfdJson
 	TokenStack utils.Stack `json:"token_stack"`
 }
 
@@ -18,31 +20,29 @@ func LexYmlFile(fileYml string) (*utils.Stack, error) {
 	lex := &Lexer{
 		file: fileYml,
 	}
-	// automatas.ExtendedInfixToPosfix("'ab\\'cd'")
-	// automatas.ExtendedInfixToPosfix("\"\\\"\"")
-	// automatas.ExtendedInfixToPosfix("'\\''\"\\\"\"")
-	// in, err := automatas.InfixToPosfix("abc(abc)*(d)")
-	// if err == nil{
-	// 	fmt.Print(in)
-	// }
-	// automatas.ExtendedInfixToPosfix("'AB''\\tABV'")
-	// automatas.ExtendedInfixToPosfix("'AB'")
-	// automatas.ExtendedInfixToPosfix("\"abc\\\\\\t\"")
-	// automatas.ExtendedInfixToPosfix("A_")
-	// automatas.ExtendedInfixToPosfix("'ABCD''a'")
-	// automatas.ExtendedInfixToPosfix("['A']['A'-'Z''a'-'z'][\"abc\"]")
-	// automatas.ExtendedInfixToPosfix("['A']#['A'-'Z']")
-	// automatas.ExtendedInfixToPosfix("('avc')\"avc\"*")
-	// automatas.ExtendedInfixToPosfix("\"avc\"+*")
-	// automatas.ExtendedInfixToPosfix("'a'\"a\"'abc'?'a'")
-	// automatas.ExtendedInfixToPosfix("'a'|'b'*")
-	automatas.ExtendedInfixToPosfix("(ident|nident)*")
-	// automatas.ExtendedInfixToPosfix("[^\"abc\"]")
-	// automatas.ExtendedInfixToPosfix("[\"abcd\"]")
-	// automatas.InfixToPosfix("[^'B'-'F']")
-	// automatas.ExtendedInfixToPosfix("['A'-'C']#['B'-'F']")
-	// automatas.ExtendedInfixToPosfix("(a)")
-	// automatas.ExtendedInfixToPosfix("(['A'-'Z'])")
+
+	definitions := map[string]string{}
+	definitions["LETTER"] = "['A'-'Z''a'-'z']"
+	definitions["NUMBER"] = "['0'-'9']"
+	definitions["COMMENT"] = "'(* '_*' *)'"
+	// definitions["COMMENT"] = "'(* '['A']*"
+	validatedDefinitions := map[string]utils.DoublyLinkedList{}
+	
+	for token, def := range definitions{
+		validated,err := automatas.ExtendedValidation(def)
+		if err != nil{
+			return nil, err
+		}
+		validatedDefinitions[token] = *validated
+	}
+	posfixDefinitions := map[string][]utils.RegexToken{}
+	for token, def := range validatedDefinitions{
+		posfix, err := automatas.ExtendedInfixToPosfix(def, validatedDefinitions)
+		if err != nil{
+			return nil, err
+		}
+		posfixDefinitions[token] = posfix
+	}
 
 	stack, err := lex.parseFile()
 	if err != nil {
