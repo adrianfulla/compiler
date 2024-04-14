@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	// "time"
+
 	"unicode"
 
 	"github.com/adrianfulla/compiler/backend/utils"
 )
-
 
 func validation(regex string) (string, error) {
 	if len(regex) == 0 {
@@ -54,30 +55,148 @@ func validation(regex string) (string, error) {
 	return regex, nil
 }
 
-func escapeRune(char rune) (rune, error){
+func escapeRune(char rune) (rune, error) {
 	// Crear la secuencia de escape como una cadena
-    escapeSequence := fmt.Sprintf("\\%c", char)
-    // Interpretar la secuencia de escape
-    decodedString, err := strconv.Unquote(`"` + escapeSequence + `"`)
-    if err != nil {
-        return 0, err
-    }
-    // Como sabemos que es una secuencia de escape, debe tener un solo carácter
-    return []rune(decodedString)[0], nil
+	escapeSequence := fmt.Sprintf("\\%c", char)
+	// Interpretar la secuencia de escape
+	decodedString, err := strconv.Unquote(`"` + escapeSequence + `"`)
+	if err != nil {
+		return 0, err
+	}
+	// Como sabemos que es una secuencia de escape, debe tener un solo carácter
+	return []rune(decodedString)[0], nil
+}
+
+func addBetweenOperator(nodo *utils.LinkedNode, char utils.RegexToken) *utils.LinkedNode {
+	newPrevToken := utils.LinkedNode{
+		Value: char,
+		Next:  nodo,
+		Prev:  nodo.Prev,
+	}
+	nodo.Prev.Next = &newPrevToken
+	nodo.Prev = &newPrevToken
+
+	return nodo
+}
+
+func shouldConcat(nodo *utils.LinkedNode) bool {
+	prev := nodo.Prev.Value.(utils.RegexToken)
+	return (prev.IsOperator != "OROPERATOR" &&
+		prev.IsOperator != "OPENPARENTHESES" &&
+		nodo.Value.(utils.RegexToken).IsOperator != "CLOSEPARENTHESES" &&
+		nodo.Value.(utils.RegexToken).IsOperator != "KLEENEOPERATOR")
+}
+
+func addOpenParentheses(nodo *utils.LinkedNode, list *utils.DoublyLinkedList) *utils.LinkedNode {
+	prevCharToken := utils.RegexToken{
+		Value:      []rune{'('},
+		IsOperator: "OPENPARENTHESES",
+	}
+	if nodo.Prev == nil {
+		list.Head = nodo.Next
+		list.Prepend(prevCharToken)
+		nodo = list.Head
+	} else{
+		// fmt.Print("Prev nodo found")
+		// fmt.Print(nodo.Prev.Value)
+		// fmt.Print("\n")
+		isConcat :=shouldConcat(nodo)
+		if  isConcat{
+			catChar := utils.RegexToken{
+				Value:      []rune{'^'},
+				IsOperator: "CATOPERATOR",
+			}
+			nodo = addBetweenOperator(nodo, catChar)
+		}
+		// list.PrintForward()
+			fmt.Print("IN Add PAR\n")
+			fmt.Printf("Prev Token %s \n", nodo.Prev.Value)
+			fmt.Printf("Current Token %s \n", nodo.Value)
+			fmt.Printf("Next Token %s \n", nodo.Next.Value)
+			// fmt.Printf("Next Token %s \n\n", nodo.Next.Next.Value)
+		newPrevToken := utils.LinkedNode{
+			Value: prevCharToken,
+			Next:  nodo.Next,
+			Prev:  nodo.Prev,
+		}
+		nodo.Next.Prev = &newPrevToken
+		nodo.Prev.Next = &newPrevToken
+		if isConcat{
+			return nodo.Prev.Prev.Next.Next
+		}
+			fmt.Printf("Prev Token %s \n", nodo.Prev.Value)
+			fmt.Printf("Prev Next Token %s \n", nodo.Prev.Next.Value)
+			fmt.Printf("Current Token %s \n", nodo.Value)
+			fmt.Printf("Next Token %s \n", nodo.Next.Value)
+			fmt.Printf("Next Token %s \n\n", nodo.Next.Next.Value)
+			// fmt.Printf("Next Prev Token %s \n\n", nodo.Next.Prev.Value)
+		nodo = nodo.Prev.Next
+	}
+	// fmt.Print("\n\n")
+	// list.PrintForward()
+	return nodo
+}
+
+func addCloseParentheses(nodo *utils.LinkedNode, list *utils.DoublyLinkedList) *utils.LinkedNode {
+	nextChar := utils.RegexToken{
+		Value:      []rune{')'},
+		IsOperator: "CLOSEPARENTHESES",
+	}
+	fmt.Print("ADD CLOSEPAR")
+	fmt.Print(nodo.Value)
+	fmt.Print("\n")
+	if nodo.Next == nil {
+		// fmt.Println("Encontro null")
+		// fmt.Printf("Current Token %s \n", currentToken.Value)
+		// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+		list.Tail = nodo.Prev
+		list.Append(nextChar)
+	} else {
+		newNextToken := utils.LinkedNode{
+			Value: nextChar,
+			Next:  nodo.Next,
+			Prev:  nodo.Prev,
+		}
+		nodo.Prev.Next = &newNextToken
+		nodo.Next.Prev = &newNextToken
+	}
+
+	return nodo
+}
+
+func findEarliestAcceptedParentheses(nodo *utils.LinkedNode) (*utils.LinkedNode){
+	deepness := 0
+	for nodo.Prev != nil && (nodo.Value.(utils.RegexToken).IsOperator != "OPENPARENTHESES" || deepness != 0){
+		if nodo.Value.(utils.RegexToken).IsOperator == "CLOSEPARENTHESES"{
+			deepness ++
+		}else if nodo.Value.(utils.RegexToken).IsOperator == "OPENPARENTHESES"{
+			deepness --
+		}
+		if deepness == 0{
+			break
+		}
+		nodo = nodo.Prev
+	}
+
+
+	return nodo
 }
 
 func extendedValidation(regex string) (string, error) {
 	if len(regex) == 0 {
-		return "", fmt.Errorf("ingrese una expresión regular")
+		return "", fmt.Errorf("regex error: empty regular expression")
 	}
 	regexDLinkedList := utils.DoublyLinkedList{}
-	
+
 	for _, char := range regex {
 		regexDLinkedList.Append(utils.RegexToken{
 			Value: []rune{char},
 		})
 	}
 	currentToken := regexDLinkedList.Head
+	openPar := 0
+	isDiff := false
+	firstCharSet := []rune{}
 	for currentToken != nil {
 		fmt.Println("")
 		fmt.Println("Forward")
@@ -85,393 +204,513 @@ func extendedValidation(regex string) (string, error) {
 		fmt.Println("Reverse")
 		regexDLinkedList.PrintReverse()
 		char := currentToken.Value.(utils.RegexToken).Value
-		if len(char) == 1{
+		if len(char) == 1 {
 			char := char[len(char)-1]
 			fmt.Printf("Encontrado:%s\n", string(char))
-			switch char{
+			switch char {
 			case '\'':
 				fmt.Printf("Case:%s\n", string(char))
-				if currentToken.Next == nil{
-					return "", fmt.Errorf("regex parsing error, found extra '")
+				if currentToken.Next == nil {
+					return "", fmt.Errorf("regex error: regex parsing error, found extra '")
 				}
-				prevCharToken :=utils.RegexToken{
-					Value: []rune{'('},
-					IsOperator: "OPENPARENTHESES",
-				}
-				if currentToken.Prev == nil{
-					regexDLinkedList.Head = currentToken.Next
-					regexDLinkedList.Prepend(prevCharToken)
-					currentToken = regexDLinkedList.Head
-				}else{
-					newPrevToken := utils.LinkedNode{
-						Value: prevCharToken,
-						Next: currentToken.Next,
-						Prev: currentToken.Prev,
-					}
-					currentToken.Next.Prev = &newPrevToken
-					currentToken.Prev.Next = &newPrevToken
-					currentToken = currentToken.Prev.Prev.Next.Next
-				}
+				currentToken = addOpenParentheses(currentToken, &regexDLinkedList)
 
-				// fmt.Printf("Current Token %s \n", currentToken.Value)
-				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-				// fmt.Printf("Next Token %s \n", currentToken.Next.Next.Value)
-				
 				currentToken = currentToken.Next
 
 				catChar := utils.RegexToken{
-					Value: []rune{'^'},
-					IsOperator:"CATOPERATOR",
+					Value:      []rune{'^'},
+					IsOperator: "CATOPERATOR",
 				}
-				for currentToken.Next.Value.(utils.RegexToken).Value[0] != '\''{
-					newNextToken := utils.LinkedNode{
-						Value: catChar,
-						Next: currentToken.Next,
-						Prev: currentToken,
+				for currentToken.Next.Value.(utils.RegexToken).Value[0] != '\'' || currentToken.Value.(utils.RegexToken).Value[0] == '\\' {
+					if currentToken.Value.(utils.RegexToken).Value[0] == '\\' {
+						if currentToken.Next.Value.(utils.RegexToken).Value[0] != '\'' {
+							escaped, err := escapeRune(currentToken.Next.Value.(utils.RegexToken).Value[0])
+							if err != nil {
+								return "nil", fmt.Errorf("escaped character not valid")
+							}
+							currentToken.Value = utils.RegexToken{
+								Value: []rune{escaped},
+							}
+							currentToken.Next = currentToken.Next.Next
+							currentToken.Next.Prev = currentToken
+						} else {
+							currentToken.Prev.Next = currentToken.Next
+							currentToken.Next.Prev = currentToken.Prev
+							currentToken = currentToken.Next
+						}
+
 					}
-					currentToken.Next.Prev = &newNextToken
-					currentToken.Next = &newNextToken
-					currentToken = newNextToken.Next
-				}
-				// fmt.Printf("Current Token %s \n", currentToken.Value)
-				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-				
-				nextChar := utils.RegexToken{
-					Value: []rune{')'},
-					IsOperator: "CLOSEPARENTHESES",
-				}
-				if currentToken.Next.Next == nil{
-					// fmt.Println("Encontro null")
-					// fmt.Printf("Current Token %s \n", currentToken.Value)
-					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-					regexDLinkedList.Tail = currentToken
-					regexDLinkedList.Append(nextChar)
-					
-				}else{
-					newNextToken := utils.LinkedNode{
-						Value: nextChar,
-						Next: currentToken.Next.Next,
-						Prev: currentToken,
+
+					if currentToken.Next != nil && currentToken.Next.Value.(utils.RegexToken).Value[0] != '\'' {
+						currentToken = addBetweenOperator(currentToken.Next, catChar)
 					}
-					currentToken.Next.Next.Prev = &newNextToken
-					currentToken.Next = &newNextToken
 				}
-				currentToken = currentToken.Next
+
+				currentToken = addCloseParentheses(currentToken.Next, &regexDLinkedList)
 			case '"':
 				fmt.Printf("Case:%s\n", string(char))
-				if currentToken.Next == nil{
-					return "", fmt.Errorf("regex parsing error, found extra '")
-				}
-				prevCharToken :=utils.RegexToken{
-					Value: []rune{'('},
-					IsOperator: "OPENPARENTHESES",
-				}
-				if currentToken.Prev == nil{
-					regexDLinkedList.Head = currentToken.Next
-					regexDLinkedList.Prepend(prevCharToken)
-					currentToken = regexDLinkedList.Head
-				}else{
-					newPrevToken := utils.LinkedNode{
-						Value: prevCharToken,
-						Next: currentToken.Next,
-						Prev: currentToken.Prev,
-					}
-					currentToken.Next.Prev = &newPrevToken
-					currentToken.Prev.Next = &newPrevToken
-					currentToken = currentToken.Prev.Prev.Next.Next
+				if currentToken.Next == nil {
+					return "", fmt.Errorf("regex error: regex parsing error, found extra '")
 				}
 
-				// fmt.Printf("Current Token %s \n", currentToken.Value)
-				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-				// fmt.Printf("Next Token %s \n", currentToken.Next.Next.Value)
-				
+				currentToken = addOpenParentheses(currentToken, &regexDLinkedList)
+
 				currentToken = currentToken.Next
 
 				catChar := utils.RegexToken{
-					Value: []rune{'^'},
-					IsOperator:"CATOPERATOR",
+					Value:      []rune{'^'},
+					IsOperator: "CATOPERATOR",
 				}
-				for currentToken.Next.Value.(utils.RegexToken).Value[0] != '"'{
-					newNextToken := utils.LinkedNode{
-						Value: catChar,
-						Next: currentToken.Next,
-						Prev: currentToken,
+				for currentToken.Next.Value.(utils.RegexToken).Value[0] != '"' || currentToken.Value.(utils.RegexToken).Value[0] == '\\' {
+					if currentToken.Value.(utils.RegexToken).Value[0] == '\\' {
+						if currentToken.Next.Value.(utils.RegexToken).Value[0] != '"' {
+							escaped, err := escapeRune(currentToken.Next.Value.(utils.RegexToken).Value[0])
+							if err != nil {
+								return "nil", fmt.Errorf("escaped character not valid")
+							}
+							currentToken.Value = utils.RegexToken{
+								Value: []rune{escaped},
+							}
+							currentToken.Next = currentToken.Next.Next
+							currentToken.Next.Prev = currentToken
+						} else {
+							currentToken.Prev.Next = currentToken.Next
+							currentToken.Next.Prev = currentToken.Prev
+							currentToken = currentToken.Next
+						}
+
 					}
-					currentToken.Next.Prev = &newNextToken
-					currentToken.Next = &newNextToken
-					currentToken = newNextToken.Next
-				}
-				// fmt.Printf("Current Token %s \n", currentToken.Value)
-				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-				
-				nextChar := utils.RegexToken{
-					Value: []rune{')'},
-					IsOperator: "CLOSEPARENTHESES",
-				}
-				if currentToken.Next.Next == nil{
-					// fmt.Println("Encontro null")
-					// fmt.Printf("Current Token %s \n", currentToken.Value)
-					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-					regexDLinkedList.Tail = currentToken
-					regexDLinkedList.Append(nextChar)
-					
-				}else{
-					newNextToken := utils.LinkedNode{
-						Value: nextChar,
-						Next: currentToken.Next.Next,
-						Prev: currentToken,
+
+					if currentToken.Next != nil && currentToken.Next.Value.(utils.RegexToken).Value[0] != '"' {
+						currentToken = addBetweenOperator(currentToken.Next, catChar)
 					}
-					currentToken.Next.Next.Prev = &newNextToken
-					currentToken.Next = &newNextToken
-				}
-				currentToken = currentToken.Next
-			case '_':
-				fmt.Printf("Case:%s\n", string(char))
-				
-				prevChar :=utils.RegexToken{
-					Value: []rune{'('},
-					IsOperator: "OPENPARENTHESES",
-				}
-				nextChar := utils.RegexToken{
-					Value: []rune{')'},
-					IsOperator: "CLOSEPARENTHESES",
-				}
-				if currentToken.Prev == nil{
-					regexDLinkedList.Prepend(prevChar)
-				}else{
-					newPrevToken := utils.LinkedNode{
-						Value: prevChar,
-						Next: currentToken,
-						Prev: currentToken.Prev,
-					}
-					currentToken.Prev.Next = &newPrevToken
 				}
 
+				currentToken = addCloseParentheses(currentToken.Next, &regexDLinkedList)
+			case '_':
+				fmt.Printf("Case:%s\n", string(char))
+
+				currentToken = &utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev:  currentToken.Prev,
+					Next:  currentToken,
+				}
+
+				currentToken = addOpenParentheses(currentToken, &regexDLinkedList).Next
 				orChar := utils.RegexToken{
-					Value: []rune{'|'},
+					Value:      []rune{'|'},
 					IsOperator: "OROPERATOR",
 				}
-				nextToken := currentToken.Next
-				fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-				for i := 0; i <= 254; i++{
-					// fmt.Printf("Including %s\n", rune(i))
+				isLast := currentToken.Next == nil
+
+				for i := 0; i <= 254; i++ {
 					currentToken.Value = utils.RegexToken{
 						Value: []rune{rune(i)},
 					}
-					
+
 					currentToken.Next = &utils.LinkedNode{
 						Value: orChar,
-						Next: &utils.LinkedNode{},
+						Next: &utils.LinkedNode{
+							Prev: currentToken.Next,
+						},
 						Prev: currentToken,
 					}
-					currentToken.Next.Next.Prev = currentToken
-					currentToken.Next.Next.Next = nextToken
-
+					currentToken.Next.Next.Prev = currentToken.Next
 					currentToken = currentToken.Next.Next
+					if isLast {
+						regexDLinkedList.Tail = currentToken
+					}
+
 				}
 				// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
 				// fmt.Printf("Current Token %s \n", currentToken.Value)
 				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-				
+
 				currentToken.Value = utils.RegexToken{
 					Value: []rune{rune(255)},
 				}
-				if currentToken.Next == nil{
-					regexDLinkedList.Append(nextChar)
-				}else{
-					newNextToken := utils.LinkedNode{
-						Value: nextChar,
-						Next: currentToken.Next,
-						Prev: currentToken,
-					}
-					currentToken.Next.Prev = &newNextToken
-					currentToken.Next = &newNextToken
-				}
+
+				currentToken = addCloseParentheses(currentToken, &regexDLinkedList)
 			case '[':
-			// 	fmt.Printf("Case:%s\n", string(char))
-			// 	if currentToken.Next == nil{
-			// 		return "", fmt.Errorf("regex parsing error, found extra '")
-			// 	}
-			// 	prevCharToken :=utils.RegexToken{
-			// 		Value: []rune{'('},
-			// 		IsOperator: "OPENPARENTHESES",
-			// 	}
-			// 	if currentToken.Prev == nil{
-			// 		regexDLinkedList.Head = currentToken.Next
-			// 		regexDLinkedList.Prepend(prevCharToken)
-			// 		currentToken = regexDLinkedList.Head
-			// 	}else{
-			// 		newPrevToken := utils.LinkedNode{
-			// 			Value: prevCharToken,
-			// 			Next: currentToken.Next,
-			// 			Prev: currentToken.Prev,
-			// 		}
-			// 		currentToken.Next.Prev = &newPrevToken
-			// 		currentToken.Prev.Next = &newPrevToken
-			// 		currentToken = currentToken.Prev.Prev.Next.Next
-			// 	}
+				fmt.Printf("Case:%s\n", string(char))
 
-			// 	// fmt.Printf("Current Token %s \n", currentToken.Value)
-			// 	// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-			// 	// fmt.Printf("Next Token %s \n", currentToken.Next.Next.Value)
-				
-			// 	currentToken = currentToken.Next
+				currentToken = addOpenParentheses(currentToken, &regexDLinkedList)
+				tempToken := currentToken.Next
+				notInCharset := false
+				symbolsStack := utils.Stack{}
+				for tempToken.Value.(utils.RegexToken).Value[0] != ']' {
+					switch tempToken.Value.(utils.RegexToken).Value[0] {
+					case '\'':
+						fmt.Print("Case ' found\n")
+						symbolsStack.Push(tempToken.Next.Value.(utils.RegexToken).Value[0])
+						if tempToken.Next.Next.Next.Value.(utils.RegexToken).Value[0] == '-' {
+							tempToken = tempToken.Next.Next.Next.Next
+							firstLimit := symbolsStack.Peek().(rune)
+							secondLimit := tempToken.Next.Value.(utils.RegexToken).Value[0]
+							// fmt.Printf("First: %s, Second: %s\n", firstLimit, secondLimit)
+							tempstack, err := expandBrackets(firstLimit, secondLimit)
+							if err != nil {
+								return "", fmt.Errorf("invalid character set")
+							}
+							for tempstack.Size() > 0 {
+								symbolsStack.Push(tempstack.Pop())
+							}
 
-			// 	catChar := utils.RegexToken{
-			// 		Value: []rune{'^'},
-			// 		IsOperator:"CATOPERATOR",
-			// 	}
-			// 	for currentToken.Next.Value.(utils.RegexToken).Value[0] != '"'{
-			// 		newNextToken := utils.LinkedNode{
-			// 			Value: catChar,
-			// 			Next: currentToken.Next,
-			// 			Prev: currentToken,
-			// 		}
-			// 		currentToken.Next.Prev = &newNextToken
-			// 		currentToken.Next = &newNextToken
-			// 		currentToken = newNextToken.Next
-			// 	}
-			// 	// fmt.Printf("Current Token %s \n", currentToken.Value)
-			// 	// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+						}
+						tempToken = tempToken.Next.Next.Next
+					case '"':
+						fmt.Print("Case \" found\n")
+						tempToken = tempToken.Next
+						for tempToken.Value.(utils.RegexToken).Value[0] != '"' {
+							symbolsStack.Push(tempToken.Value.(utils.RegexToken).Value[0])
+							tempToken = tempToken.Next
+						}
+						tempToken = tempToken.Next
+					case '^':
+						fmt.Print("Case ^ found\n")
+						notInCharset = true
+						tempToken = tempToken.Next
+					default:
+						fmt.Print("Case nil found\n")
+						return "", fmt.Errorf("invalid character set")
+					}
+
+				}
+				if notInCharset {
+					notIn := []rune{}
+					for symbolsStack.Size() > 0 {
+						notIn = append(notIn, symbolsStack.Pop().(rune))
+					}
+					fmt.Printf("NOT IN %s\n", string(notIn))
+					for i := range 255 {
+						if !strings.ContainsRune(string(notIn), rune(i)) {
+							symbolsStack.Push(rune(i))
+						}
+					}
+				}
+				if !isDiff{
+					firstElem := symbolsStack.Peek().(rune)
+					firstCharSet = []rune{}
+					firstCharSet = append(firstCharSet, firstElem)
+				}else{
+					secondCharSet := []rune{}
+					tempStackSymbol := utils.Stack{}
+					for symbolsStack.Size() > 0 {
+						char :=symbolsStack.Pop().(rune)
+						secondCharSet = append(secondCharSet, char)
+						if !strings.ContainsRune(string(firstCharSet), char){
+							tempStackSymbol.Push(char)
+						}
+					}
+					for _, char := range firstCharSet{
+						if !strings.ContainsRune(string(secondCharSet), char){
+							tempStackSymbol.Push(char)
+						}
+					}
+					for tempStackSymbol.Size() > 0{
+						symbolsStack.Push(tempStackSymbol.Pop())
+					}
+					for currentToken.Prev.Value.(utils.RegexToken).IsOperator != "OPENPARENTHESES"{
+						currentToken = currentToken.Prev
+					}
+					currentToken = currentToken.Prev
+				}
+				newNodo := utils.LinkedNode{
+					Value: utils.RegexToken{
+						Value: []rune{symbolsStack.Pop().(rune)},
+					},
+					Prev: currentToken,
+					Next: tempToken,
+				}
+				orChar := utils.RegexToken{
+					Value:      []rune{'|'},
+					IsOperator: "OROPERATOR",
+				}
+				currentToken.Next = &newNodo
+				tempToken.Prev = &newNodo
+				currentToken = currentToken.Next
+				for symbolsStack.Size() > 0 {
+					charElem :=symbolsStack.Pop().(rune)
+					firstCharSet = append(firstCharSet, charElem)
+					newNodo := utils.LinkedNode{
+						Value: utils.RegexToken{
+							Value: []rune{charElem},
+						},
+						Prev: currentToken,
+						Next: tempToken,
+					}
+					currentToken.Next = &newNodo
+					tempToken.Prev = &newNodo
+					currentToken = addBetweenOperator(&newNodo, orChar)
+				}
+				currentToken = currentToken.Next
 				
-			// 	nextChar := utils.RegexToken{
-			// 		Value: []rune{')'},
-			// 		IsOperator: "CLOSEPARENTHESES",
-			// 	}
-			// 	if currentToken.Next.Next == nil{
-			// 		// fmt.Println("Encontro null")
-			// 		// fmt.Printf("Current Token %s \n", currentToken.Value)
-			// 		// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-			// 		regexDLinkedList.Tail = currentToken
-			// 		regexDLinkedList.Append(nextChar)
-					
-			// 	}else{
-			// 		newNextToken := utils.LinkedNode{
-			// 			Value: nextChar,
-			// 			Next: currentToken.Next.Next,
-			// 			Prev: currentToken,
-			// 		}
-			// 		currentToken.Next.Next.Prev = &newNextToken
-			// 		currentToken.Next = &newNextToken
-			// 	}
-			// 	currentToken = currentToken.Next
+				// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				currentToken = addCloseParentheses(currentToken, &regexDLinkedList)
 			case ']':
 				return "", fmt.Errorf("unexpected closing bracket found at regex")
 			case '(':
+				fmt.Printf("Case:%s\n", string(char))
+				currentToken.Value = utils.RegexToken{
+					Value: currentToken.Value.(utils.RegexToken).Value,
+					IsOperator: "OPENPARENTHESES",
+				}
+				openPar ++
 			case ')':
+				fmt.Printf("Case:%s\n", string(char))
+				currentToken.Value = utils.RegexToken{
+					Value: currentToken.Value.(utils.RegexToken).Value,
+					IsOperator: "CLOSEPARENTHESES",
+				}
+				openPar --
 			case '^':
+				fmt.Printf("Case:%s\n", string(char))
+				return "", fmt.Errorf("regex error: character %s not valid in regex", string(char))
 			case '#':
+				fmt.Printf("Case:%s\n", string(char))
+				isDiff = true
 			case '*':
+				fmt.Printf("Case:%s\n", string(char))
+				// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				tempToken := currentToken.Prev
+				tempToken = findEarliestAcceptedParentheses(tempToken)
+				fmt.Print("After earliest\n")
+				// fmt.Printf("Prev Token %s \n", tempToken.Prev.Value)
+				fmt.Printf("Current Token %s \n", tempToken.Value)
+				fmt.Printf("Next Token %s \n", tempToken.Next.Value)
+				if tempToken.Prev != nil{
+					tempToken = &utils.LinkedNode{
+						Value: utils.RegexToken{
+							Value: []rune{'('},
+							IsOperator: "OPENPARENTHESES",
+						} ,
+						Prev: tempToken.Prev,
+						Next: tempToken,
+					}
+					tempToken.Prev.Next = tempToken
+					tempToken.Next.Prev = tempToken
+				}else{
+					regexDLinkedList.Prepend(utils.RegexToken{
+						Value: []rune{'('},
+						IsOperator: "OPENPARENTHESES",
+					})
+				}
+				
+				// addOpenParentheses(tempToken, &regexDLinkedList)
+				
+				emptyToken := &utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev: currentToken,
+					Next: currentToken.Next,
+				}
+				currentToken = addCloseParentheses(emptyToken, &regexDLinkedList).Prev
+				currentToken.Value =	utils.RegexToken{
+							Value: currentToken.Value.(utils.RegexToken).Value,
+							IsOperator: "KLEENE",
+						}
+				currentToken = currentToken.Next
 			case '+':
+				fmt.Printf("Case:%s\n", string(char))
+				tempToken := currentToken.Prev
+				tempToken = findEarliestAcceptedParentheses(tempToken)
+
+
+				firstEmptyToken := utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev: tempToken,
+					Next: tempToken.Next,
+				}
+				
+				
+				tempToken = addOpenParentheses(&firstEmptyToken,&regexDLinkedList)
+				// regexDLinkedList.PrintForward()
+
+				emptyToken := utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev: currentToken.Prev,
+					Next: currentToken,
+				}
+				currentToken = addOpenParentheses(&emptyToken,&regexDLinkedList).Next
+				
+				deepness := 0
+				for tempToken.Next != nil && (tempToken.Value.(utils.RegexToken).IsOperator != "CLOSEPARENTHESES" || deepness != 0){
+					
+					if tempToken.Value.(utils.RegexToken).IsOperator == "CLOSEPARENTHESES"{
+						deepness --
+						
+					}else if tempToken.Value.(utils.RegexToken).IsOperator == "OPENPARENTHESES"{
+						deepness ++
+					}
+					currentToken.Prev = &utils.LinkedNode{
+						Value: tempToken.Value,
+						Prev: currentToken.Prev,
+						Next: currentToken,
+					}
+					currentToken.Prev.Prev.Next = currentToken.Prev
+
+					// fmt.Print("\nlooking for RPar\nforward\n")
+					// fmt.Printf("toke %s, deep %d\n",tempToken.Value, deepness)
+					// fmt.Print("\n")
+					// regexDLinkedList.PrintForward()
+					// fmt.Print("\n\nreverse\n")
+					// regexDLinkedList.PrintReverse()
+					// time.Sleep(1 * time.Second)
+					tempToken = tempToken.Next
+
+					if deepness == 0{
+						break
+					}
+				}				
+
+
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				// fmt.Print("IN *\nforward\n")
+				// regexDLinkedList.PrintForward()
+				// fmt.Print("\n\nreverse\n")
+				// regexDLinkedList.PrintReverse()
+				emptyToken = utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev: currentToken,
+					Next: currentToken.Next,
+				}
+
+				currentToken = addCloseParentheses(&emptyToken, &regexDLinkedList).Prev
+				currentToken.Value =	utils.RegexToken{
+							Value: []rune{'*'},
+							IsOperator: "KLEENE",
+						}
+				emptyToken = utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev: currentToken,
+					Next: currentToken.Next,
+				}
+				currentToken = addCloseParentheses(&emptyToken, &regexDLinkedList)
+				currentToken = currentToken.Next
 			case '?':
+				fmt.Printf("Case:%s\n", string(char))
+				// fmt.Print("Bef earlies\n")
+				// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				tempToken := currentToken.Prev
+				tempToken = findEarliestAcceptedParentheses(tempToken)
+
+				tempToken = &utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev: tempToken,
+					Next: tempToken.Next,
+				}
+				
+				// fmt.Printf("Prev Temp Token %s \n", tempToken.Prev.Value)
+				addOpenParentheses(tempToken, &regexDLinkedList)
+				regexDLinkedList.PrintForward()
+				
+				emptyToken := &utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev: currentToken,
+					Next: currentToken.Next,
+				}
+				currentToken = addCloseParentheses(emptyToken, &regexDLinkedList).Prev
+				currentToken.Value =	utils.RegexToken{
+							Value: []rune{},
+							IsOperator: "NULL",
+						}
+				orChar := utils.RegexToken{
+					Value:      []rune{'|'},
+					IsOperator: "OROPERATOR",
+				}
+				currentToken = addBetweenOperator(currentToken, orChar)
+				currentToken = currentToken.Next
 			case '|':
-			
+				fmt.Printf("Case:%s\n", string(char))
+				currentToken = &utils.LinkedNode{
+					Value: utils.RegexToken{
+						Value: currentToken.Value.(utils.RegexToken).Value,
+						IsOperator: "OROPERATOR",
+					},
+					Next: currentToken.Next,
+					Prev: currentToken.Prev,
+				}
+				currentToken.Next.Prev = currentToken
+				currentToken.Prev.Next = currentToken
 			default:
 				fmt.Printf("Default Case:%s\n", string(char))
-			// 	if currentToken.Next == nil{
-			// 		return "", fmt.Errorf("regex parsing error, found extra '")
-			// 	}
-			// 	nextChar := currentToken.Next.Value.(utils.RegexToken).Value[0]
-			// 	currentToken.Value = utils.RegexToken{
-			// 		Value: []rune{},
-			// 	}
-			// 	for nextChar != '"'{
-			// 		if currentToken.Next != nil{
-			// 			if nextChar == '\\'{
-			// 				temp, err := escapeRune(currentToken.Next.Next.Value.(utils.RegexToken).Value[0])
-			// 				if err != nil{
-			// 					if currentToken.Next.Next.Value.(utils.RegexToken).Value[0] == '"'{
-			// 						temp = '\''
-			// 					}else{
-			// 						return "", fmt.Errorf("invalid escape sequence in regex")
-			// 					}
-			// 				}
-			// 				nextChar = temp
-			// 				currentToken.Next = currentToken.Next.Next
-			// 			}
-			// 			currentToken.Value = utils.RegexToken{
-			// 				Value: append(currentToken.Value.(utils.RegexToken).Value, nextChar),
-			// 			}
-			// 			currentToken.Next = currentToken.Next.Next
-			// 			nextChar = currentToken.Next.Value.(utils.RegexToken).Value[0]
-			// 		}else{
-			// 			break
-			// 		}
-			// 	}
-			// 	if currentToken.Prev != nil{
-			// 		currentToken.Prev.Next = currentToken
-			// 	}else{
-			// 		regexDLinkedList.Head = currentToken
-			// 	}
-			// 	currentToken.Next = currentToken.Next.Next
-			// }
-		// }
-		
+				if currentToken.Prev == nil || currentToken.Prev.Value.(utils.RegexToken).IsOperator != "IDENT"{
+					tempToken := &utils.LinkedNode{
+						Value: utils.RegexToken{},
+						Prev: currentToken.Prev,
+						Next: currentToken,
+					}
+					// fmt.Printf("Prev Temp Token %s \n", tempToken.Prev.Value)
+					currentToken = addOpenParentheses(tempToken, &regexDLinkedList).Next
+					// regexDLinkedList.PrintForward()
+					currentToken.Value = utils.RegexToken{
+							Value: currentToken.Value.(utils.RegexToken).Value,
+							IsOperator: "IDENT",
+					}
+					currentToken.Prev.Next = currentToken
+					// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+					// fmt.Printf("Current Token %s \n", currentToken.Value)
+					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				}else if currentToken.Prev.Value.(utils.RegexToken).IsOperator == "IDENT" {
+					// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+					// fmt.Printf("Current Token %s \n", currentToken.Value)
+					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+					currentToken = &utils.LinkedNode{
+						Value: utils.RegexToken{
+							Value: append(currentToken.Prev.Value.(utils.RegexToken).Value, currentToken.Value.(utils.RegexToken).Value...),
+							IsOperator: "IDENT",
+						},
+						Next: currentToken.Next,
+						Prev: currentToken.Prev.Prev,
+					}
+					currentToken.Prev.Next = currentToken
+					if currentToken.Next != nil{
+						currentToken.Next.Prev = currentToken
+						currentToken = currentToken.Next.Prev
+					}else{
+						regexDLinkedList.Tail = currentToken
+					}
+					
+				}else{
+					currentToken.Value = utils.RegexToken{
+						Value: currentToken.Value.(utils.RegexToken).Value,
+						IsOperator: "IDENT",
+					}
+				}
+				if currentToken.Next == nil || strings.ContainsRune("'\"[]()#*|+", currentToken.Next.Value.(utils.RegexToken).Value[0]){
+					fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+					fmt.Printf("Current Token %s \n", currentToken.Value)
+					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+					emptyToken := &utils.LinkedNode{
+						Value: utils.RegexToken{},
+						Prev: currentToken,
+						Next: currentToken.Next,
+					}
+					currentToken = addCloseParentheses(emptyToken, &regexDLinkedList)
+				}
 			}
 			currentToken = currentToken.Next
 		}
 	}
-	fmt.Println("Forward")
+
+	fmt.Print("END OF SHIFT\n")
+	fmt.Print("forward\n")
 	regexDLinkedList.PrintForward()
-	fmt.Println("Reverse")
+	fmt.Print("\n\nreverse\n")
 	regexDLinkedList.PrintReverse()
+	if openPar != 0{
+		return "", fmt.Errorf("regex error: unbalanced parentheses")
+	}
 	return regex, nil
 }
 
-
-func expandBrackets(limits []rune, isNot bool) (utils.Stack, error) {
+func expandBrackets(start rune, end rune) (utils.Stack, error) {
 	result := utils.Stack{}
-	start := limits[1]
-	end := limits[0]
-	if isNot {
-		if !strings.ContainsRune("Aa0", start) {
-			runeType := utils.RuneType(start)
-			var val rune
-			switch runeType {
-			case "upper":
-				val = 'A'
-			case "lower":
-				val = 'a'
-			case "number":
-				val = '0'
-			case "other":
-				return result, fmt.Errorf("character in character set not allowed for start: %s", string(start))
-			}
-			tStart := val
-			tEnd := start - 1
-			res, err := expandBrackets([]rune{tEnd, tStart}, false)
-			if err != nil {
-				return result, err
-			}
-			for res.Size() > 0 {
-				result.Push(res.Pop())
-			}
-		}
-		if !strings.ContainsRune("Zz9", end) {
-			runeType := utils.RuneType(start)
-			var val rune
-			switch runeType {
-			case "upper":
-				val = 'Z'
-			case "lower":
-				val = 'z'
-			case "number":
-				val = '9'
-			case "other":
-				return result, fmt.Errorf("character in character set not allowed for end: %s", string(start))
-			}
-			tStart := end + 1
-			tEnd := val
-			res, err := expandBrackets([]rune{tEnd, tStart}, false)
-			if err != nil {
-				return result, err
-			}
-			for res.Size() > 0 {
-				result.Push(res.Pop())
-			}
-		}
-		return result, nil
-	}
 	for c := start; c <= end; c++ {
 		result.Push(c)
 	}
@@ -619,6 +858,7 @@ func shuntingYard(infix string) string {
 		postfix += string(stack[len(stack)-1])
 		stack = stack[:len(stack)-1]
 	}
+	fmt.Printf("Shunting Yard %s\n", postfix)
 	return postfix
 }
 

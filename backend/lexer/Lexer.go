@@ -3,8 +3,6 @@ package lexer
 import (
 	// "fmt"
 
-	"fmt"
-
 	"github.com/adrianfulla/compiler/backend/automatas"
 	"github.com/adrianfulla/compiler/backend/utils"
 )
@@ -20,17 +18,26 @@ func LexYmlFile(fileYml string) (*utils.Stack, error) {
 	lex := &Lexer{
 		file: fileYml,
 	}
-	// automatas.ExtendedInfixToPosfix("'AB''\\t''\\''")
-	automatas.ExtendedInfixToPosfix("'A''ABCD'\"abc\"")
-	in, err := automatas.InfixToPosfix("abc(abc)(d)")
-	if err == nil{
-		fmt.Print(in)
-	}
+	// automatas.ExtendedInfixToPosfix("'ab\\'cd'")
+	// automatas.ExtendedInfixToPosfix("\"\\\"\"")
+	// automatas.ExtendedInfixToPosfix("'\\''\"\\\"\"")
+	// in, err := automatas.InfixToPosfix("abc(abc)*(d)")
+	// if err == nil{
+	// 	fmt.Print(in)
+	// }
 	// automatas.ExtendedInfixToPosfix("'AB''\\tABV'")
+	// automatas.ExtendedInfixToPosfix("'AB'")
 	// automatas.ExtendedInfixToPosfix("\"abc\\\\\\t\"")
-	// automatas.ExtendedInfixToPosfix("A_B")
-	// automatas.ExtendedInfixToPosfix("['A']")
-	// automatas.ExtendedInfixToPosfix("['A'-'Z''a'-'z']")
+	// automatas.ExtendedInfixToPosfix("A_")
+	// automatas.ExtendedInfixToPosfix("'ABCD''a'")
+	// automatas.ExtendedInfixToPosfix("['A']['A'-'Z''a'-'z'][\"abc\"]")
+	// automatas.ExtendedInfixToPosfix("['A']#['A'-'Z']")
+	// automatas.ExtendedInfixToPosfix("('avc')\"avc\"*")
+	// automatas.ExtendedInfixToPosfix("\"avc\"+*")
+	// automatas.ExtendedInfixToPosfix("'a'\"a\"'abc'?'a'")
+	// automatas.ExtendedInfixToPosfix("'a'|'b'*")
+	automatas.ExtendedInfixToPosfix("(ident|nident)*")
+	// automatas.ExtendedInfixToPosfix("[^\"abc\"]")
 	// automatas.ExtendedInfixToPosfix("[\"abcd\"]")
 	// automatas.InfixToPosfix("[^'B'-'F']")
 	// automatas.ExtendedInfixToPosfix("['A'-'C']#['B'-'F']")
