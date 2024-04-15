@@ -21,3 +21,4 @@ type LexToken struct{
 	Regex 	string `json:"regex"`
 	Action  string `json:"action"`
 }
+

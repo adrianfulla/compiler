@@ -109,10 +109,10 @@ func addOpenParentheses(nodo *utils.LinkedNode, list *utils.DoublyLinkedList) *u
 			nodo = addBetweenOperator(nodo, catChar)
 		}
 		// list.PrintForward()
-			fmt.Print("IN Add PAR\n")
-			fmt.Printf("Prev Token %s \n", nodo.Prev.Value)
-			fmt.Printf("Current Token %s \n", nodo.Value)
-			fmt.Printf("Next Token %s \n", nodo.Next.Value)
+			// fmt.Print("IN Add PAR\n")
+			// fmt.Printf("Prev Token %s \n", nodo.Prev.Value)
+			// fmt.Printf("Current Token %s \n", nodo.Value)
+			// fmt.Printf("Next Token %s \n", nodo.Next.Value)
 			// fmt.Printf("Next Token %s \n\n", nodo.Next.Next.Value)
 		newPrevToken := utils.LinkedNode{
 			Value: prevCharToken,
@@ -124,11 +124,11 @@ func addOpenParentheses(nodo *utils.LinkedNode, list *utils.DoublyLinkedList) *u
 		if isConcat{
 			return nodo.Prev.Prev.Next.Next
 		}
-			fmt.Printf("Prev Token %s \n", nodo.Prev.Value)
-			fmt.Printf("Prev Next Token %s \n", nodo.Prev.Next.Value)
-			fmt.Printf("Current Token %s \n", nodo.Value)
-			fmt.Printf("Next Token %s \n", nodo.Next.Value)
-			fmt.Printf("Next Token %s \n\n", nodo.Next.Next.Value)
+			// fmt.Printf("Prev Token %s \n", nodo.Prev.Value)
+			// fmt.Printf("Prev Next Token %s \n", nodo.Prev.Next.Value)
+			// fmt.Printf("Current Token %s \n", nodo.Value)
+			// fmt.Printf("Next Token %s \n", nodo.Next.Value)
+			// fmt.Printf("Next Token %s \n\n", nodo.Next.Next.Value)
 			// fmt.Printf("Next Prev Token %s \n\n", nodo.Next.Prev.Value)
 		nodo = nodo.Prev.Next
 	}
@@ -142,9 +142,9 @@ func addCloseParentheses(nodo *utils.LinkedNode, list *utils.DoublyLinkedList) *
 		Value:      []rune{')'},
 		IsOperator: "CLOSEPARENTHESES",
 	}
-	fmt.Print("ADD CLOSEPAR")
-	fmt.Print(nodo.Value)
-	fmt.Print("\n")
+	// fmt.Print("ADD CLOSEPAR")
+	// fmt.Print(nodo.Value)
+	// fmt.Print("\n")
 	if nodo.Next == nil {
 		// fmt.Println("Encontro null")
 		// fmt.Printf("Current Token %s \n", currentToken.Value)
@@ -190,7 +190,7 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 		"CATOPERATOR",
 		"OROPERATOR",
 	}
-
+	fmt.Println(regex)
 	if len(regex) == 0 {
 		return nil, fmt.Errorf("regex error: empty regular expression")
 	}
@@ -206,35 +206,39 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 	isDiff := false
 	firstCharSet := []rune{}
 	for currentToken != nil {
-		// fmt.Println("")
-		// fmt.Println("Forward")
-		// regexDLinkedList.PrintForward()
-		// fmt.Println("Reverse")
-		// regexDLinkedList.PrintReverse()
+		fmt.Println("")
+		fmt.Println("Forward")
+		regexDLinkedList.PrintForward()
+		fmt.Println("Reverse")
+		regexDLinkedList.PrintReverse()
 		char := currentToken.Value.(utils.RegexToken).Value
 		if len(char) == 1 {
 			char := char[len(char)-1]
-			// fmt.Printf("Encontrado:%s\n", string(char))
+			fmt.Printf("Encontrado:%s\n", string(char))
 			switch char {
 			case '\'':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				if currentToken.Next == nil {
+					
 					return nil, fmt.Errorf("regex error: regex parsing error, found extra '")
 				}
+				
 				currentToken = addOpenParentheses(currentToken, &regexDLinkedList)
-
+				
 				currentToken = currentToken.Next
-
+				
 				catChar := utils.RegexToken{
 					Value:      []rune{'^'},
 					IsOperator: "CATOPERATOR",
 				}
+				
 				for currentToken.Next.Value.(utils.RegexToken).Value[0] != '\'' || currentToken.Value.(utils.RegexToken).Value[0] == '\\' {
+					fmt.Println("ACA")
 					if currentToken.Value.(utils.RegexToken).Value[0] == '\\' {
 						if currentToken.Next.Value.(utils.RegexToken).Value[0] != '\'' {
 							escaped, err := escapeRune(currentToken.Next.Value.(utils.RegexToken).Value[0])
 							if err != nil {
-								return nil, fmt.Errorf("escaped character not valid")
+								escaped = currentToken.Next.Next.Value.(utils.RegexToken).Value[0]
 							}
 							currentToken.Value = utils.RegexToken{
 								Value: []rune{escaped},
@@ -242,6 +246,7 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 							currentToken.Next = currentToken.Next.Next
 							currentToken.Next.Prev = currentToken
 						} else {
+							fmt.Println("ACA")
 							currentToken.Prev.Next = currentToken.Next
 							currentToken.Next.Prev = currentToken.Prev
 							currentToken = currentToken.Next
@@ -253,10 +258,11 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 						currentToken = addBetweenOperator(currentToken.Next, catChar)
 					}
 				}
-
+				// fmt.Println("ERROR ACA\n")
 				currentToken = addCloseParentheses(currentToken.Next, &regexDLinkedList)
+				
 			case '"':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				if currentToken.Next == nil {
 					return nil, fmt.Errorf("regex error: regex parsing error, found extra '")
 				}
@@ -274,7 +280,7 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 						if currentToken.Next.Value.(utils.RegexToken).Value[0] != '"' {
 							escaped, err := escapeRune(currentToken.Next.Value.(utils.RegexToken).Value[0])
 							if err != nil {
-								return nil, fmt.Errorf("escaped character not valid")
+								escaped = currentToken.Next.Next.Value.(utils.RegexToken).Value[0]
 							}
 							currentToken.Value = utils.RegexToken{
 								Value: []rune{escaped},
@@ -296,8 +302,9 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 
 				currentToken = addCloseParentheses(currentToken.Next, &regexDLinkedList)
 			case '_':
-				// fmt.Printf("Case:%s\n", string(char))
-
+				fmt.Printf("Case:%s\n", string(char))
+				
+				nextToken := currentToken.Next
 				currentToken = &utils.LinkedNode{
 					Value: utils.RegexToken{},
 					Prev:  currentToken.Prev,
@@ -337,10 +344,21 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 				currentToken.Value = utils.RegexToken{
 					Value: []rune{rune(255)},
 				}
+				// fmt.Printf("\nPrev Token %s \n", currentToken.Prev.Value)
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				emptyToken := &utils.LinkedNode{
+					Value: utils.RegexToken{},
+					Prev: currentToken,
+					Next: nextToken,
+				}
 
-				currentToken = addCloseParentheses(currentToken, &regexDLinkedList)
+				currentToken = addCloseParentheses(emptyToken, &regexDLinkedList)
+				// fmt.Printf("\nPrev Token %s \n", currentToken.Prev.Value)
+				// fmt.Printf("Current Token %s \n", currentToken.Value)
+				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
 			case '[':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 
 				currentToken = addOpenParentheses(currentToken, &regexDLinkedList)
 				tempToken := currentToken.Next
@@ -350,13 +368,26 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 					switch tempToken.Value.(utils.RegexToken).Value[0] {
 					case '\'':
 						// fmt.Print("Case ' found\n")
+						// fmt.Printf("\nPrev Token %s \n", tempToken.Prev.Value)
+						// fmt.Printf("Current Token %s \n", tempToken.Value)
+						// fmt.Printf("Next Token %s \n", tempToken.Next.Value)
+						if tempToken.Next.Value.(utils.RegexToken).Value[0] =='\\'{
+							escaped, err :=escapeRune(tempToken.Next.Next.Value.(utils.RegexToken).Value[0])
+							if err != nil{
+								escaped = tempToken.Next.Next.Value.(utils.RegexToken).Value[0]
+							}
+							tempToken.Next.Next.Value = utils.RegexToken{
+								Value: []rune{escaped},
+							}
+							tempToken = tempToken.Next
+						}
 						symbolsStack.Push(tempToken.Next.Value.(utils.RegexToken).Value[0])
 						if tempToken.Next.Next.Next.Value.(utils.RegexToken).Value[0] == '-' {
 							tempToken = tempToken.Next.Next.Next.Next
 							firstLimit := symbolsStack.Peek().(rune)
 							secondLimit := tempToken.Next.Value.(utils.RegexToken).Value[0]
 							// fmt.Printf("First: %s, Second: %s\n", firstLimit, secondLimit)
-							tempstack, err := expandBrackets(firstLimit, secondLimit)
+							tempstack, err := expandBrackets(firstLimit+1, secondLimit)
 							if err != nil {
 								return nil, fmt.Errorf("invalid character set")
 							}
@@ -367,7 +398,16 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 						}
 						tempToken = tempToken.Next.Next.Next
 					case '"':
-						// fmt.Print("Case \" found\n")
+						if tempToken.Next.Value.(utils.RegexToken).Value[0] =='\\'{
+							escaped, err :=escapeRune(tempToken.Next.Next.Value.(utils.RegexToken).Value[0])
+							if err != nil{
+								escaped = tempToken.Next.Next.Value.(utils.RegexToken).Value[0]
+							}
+							tempToken.Next.Next.Value = utils.RegexToken{
+								Value: []rune{escaped},
+							}
+							tempToken = tempToken.Next
+						}
 						tempToken = tempToken.Next
 						for tempToken.Value.(utils.RegexToken).Value[0] != '"' {
 							symbolsStack.Push(tempToken.Value.(utils.RegexToken).Value[0])
@@ -439,6 +479,7 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 				currentToken = currentToken.Next
 				for symbolsStack.Size() > 0 {
 					charElem :=symbolsStack.Pop().(rune)
+					// fmt.Printf("Char in symbolstack: %s\n", charElem)
 					firstCharSet = append(firstCharSet, charElem)
 					newNodo := utils.LinkedNode{
 						Value: utils.RegexToken{
@@ -460,27 +501,27 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 			case ']':
 				return nil, fmt.Errorf("unexpected closing bracket found at regex")
 			case '(':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				currentToken.Value = utils.RegexToken{
 					Value: currentToken.Value.(utils.RegexToken).Value,
 					IsOperator: "OPENPARENTHESES",
 				}
 				openPar ++
 			case ')':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				currentToken.Value = utils.RegexToken{
 					Value: currentToken.Value.(utils.RegexToken).Value,
 					IsOperator: "CLOSEPARENTHESES",
 				}
 				openPar --
 			case '^':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				return nil, fmt.Errorf("regex error: character %s not valid in regex", string(char))
 			case '#':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				isDiff = true
 			case '*':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
 				// fmt.Printf("Current Token %s \n", currentToken.Value)
 				// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
@@ -522,7 +563,7 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 						}
 				currentToken = currentToken.Next
 			case '+':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				tempToken := currentToken.Prev
 				tempToken = findEarliestAcceptedParentheses(tempToken)
 
@@ -599,7 +640,7 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 				currentToken = addCloseParentheses(&emptyToken, &regexDLinkedList)
 				currentToken = currentToken.Next
 			case '?':
-				// fmt.Printf("Case:%s\n", string(char))
+				fmt.Printf("Case:%s\n", string(char))
 				// fmt.Print("Bef earlies\n")
 				// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
 				// fmt.Printf("Current Token %s \n", currentToken.Value)
@@ -646,7 +687,7 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList,error) {
 				currentToken.Next.Prev = currentToken
 				currentToken.Prev.Next = currentToken
 			default:
-				// fmt.Printf("Default Case:%s\n", string(char))
+				fmt.Printf("Default Case:%s\n", string(char))
 				if currentToken.Prev == nil ||  utils.StringInStringArray(currentToken.Prev.Value.(utils.RegexToken).IsOperator, operators) {
 					tempToken := &utils.LinkedNode{
 						Value: utils.RegexToken{},
@@ -871,8 +912,9 @@ func shuntingYard(infix string) string {
 }
 
 func extendedShuntingYard(infix utils.DoublyLinkedList, definitions map[string]utils.DoublyLinkedList) ([]utils.RegexToken, error){
-	precedence := map[string]int{
-		"KLEENE": 4, "CATOPERATOR": 3, "OROPERATOR": 2, "OPENPARENTHESES": 1,
+	// infix.PrintForward()
+	precedence := map[string][]int{
+		"KLEENE": {4,42}, "CATOPERATOR": {3,94}, "OROPERATOR": {2,124}, "OPENPARENTHESES": {1,40},
 	}
 	posfixExp := []utils.RegexToken{}
 	operatorStack := utils.Stack{}
@@ -886,11 +928,12 @@ func extendedShuntingYard(infix utils.DoublyLinkedList, definitions map[string]u
 			switch operator{
 			case "KLEENE", "CATOPERATOR", "OROPERATOR":
 				// fmt.Printf("Case %s\n", operator)
-				for operatorStack.Size() > 0 && precedence[operator] <= precedence[operatorStack.Peek().(string)]{
+				for operatorStack.Size() > 0 && precedence[operator][0] <= precedence[operatorStack.Peek().(string)][0]{
 					// fmt.Print("--------ACA------\n")
+					tempOperator := operatorStack.Pop().(string)
 					posfixExp = append(posfixExp, utils.RegexToken{
-						Value: []rune{},
-						IsOperator: operatorStack.Pop().(string),
+						Value: []rune{rune(precedence[tempOperator][1])},
+						IsOperator: tempOperator,
 					})
 					// fmt.Printf("Top of stack %s\n", operatorStack.Peek())
 				}
@@ -899,22 +942,26 @@ func extendedShuntingYard(infix utils.DoublyLinkedList, definitions map[string]u
 				operatorStack.Push(operator)
 			case "CLOSEPARENTHESES":
 				for operatorStack.Size() > 0 && operatorStack.Peek() != "OPENPARENTHESES" {
+					tempOperator := operatorStack.Pop().(string)
 					posfixExp = append(posfixExp, utils.RegexToken{
-						Value: []rune{},
-						IsOperator: operatorStack.Pop().(string),
+						Value: []rune{rune(precedence[tempOperator][1])},
+						IsOperator: tempOperator,
 					})
 				}
 				operatorStack.Pop()
 			default:
 				// fmt.Printf("Case default, op not recognized %s\n", operator)
-				if definitions[operator].Head == nil {
+				if operator == "NULL"{
+					posfixExp = append(posfixExp, currentToken.Value.(utils.RegexToken))
+				}else if definitions[operator].Head == nil {
 					return nil, fmt.Errorf("regex parsing error: indent %s not recognized", operator)
+				}else{
+					nextToken := currentToken.Next
+					currentToken.Next = definitions[operator].Head
+					currentToken.Next.Prev = currentToken
+					nextToken.Prev = definitions[operator].Tail
+					nextToken.Prev.Next = nextToken
 				}
-				nextToken := currentToken.Next
-				currentToken.Next = definitions[operator].Head
-				currentToken.Next.Prev = currentToken
-				nextToken.Prev = definitions[operator].Tail
-				nextToken.Prev.Next = nextToken
 			}
 		}else{
 			// fmt.Printf("No ope found\n")
@@ -923,15 +970,16 @@ func extendedShuntingYard(infix utils.DoublyLinkedList, definitions map[string]u
 		currentToken = currentToken.Next
 	}
 	for operatorStack.Size() > 0{
+		tempOperator := operatorStack.Pop().(string)
 		posfixExp = append(posfixExp, utils.RegexToken{
-			Value: []rune{},
-			IsOperator: operatorStack.Pop().(string),
+			Value: []rune{rune(precedence[tempOperator][1])},
+			IsOperator: tempOperator,
 		})
 	}
 
 
-	fmt.Println(posfixExp)
-	fmt.Printf("Top of stack %s\n\n", operatorStack.Peek())
+	// fmt.Println(posfixExp)
+	// fmt.Printf("Top of stack %s\n\n", operatorStack.Peek())
 
 	return posfixExp, nil
 }

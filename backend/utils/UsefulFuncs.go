@@ -55,9 +55,23 @@ func StringInStringArray(n string, arr []string) bool {
 	}
 	return false
 }
+func RuneInRuneArray(n rune, arr []rune) bool {
+	for _, i := range arr {
+		if n == i {
+			return true
+		}
+	}
+	return false
+}
 
 func AppendStringIfNotInArr(n string, arr []string) []string {
 	if !StringInStringArray(n, arr) {
+		return append(arr, n)
+	}
+	return arr
+}
+func AppendRuneIfNotInArr(n rune, arr []rune) []rune {
+	if !RuneInRuneArray(n, arr) {
 		return append(arr, n)
 	}
 	return arr

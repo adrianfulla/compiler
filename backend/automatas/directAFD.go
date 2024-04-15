@@ -13,7 +13,7 @@ import (
 type Dstate struct {
 	nombre       string
 	aceptacion   bool
-	transiciones map[string]*Dstate
+	transiciones map[rune]*Dstate
 	posicion     []int
 }
 
@@ -21,12 +21,12 @@ func NewDstate(nombre string, aceptacion bool, posicion []int) *Dstate {
 	return &Dstate{
 		nombre:       nombre,
 		aceptacion:   aceptacion,
-		transiciones: make(map[string]*Dstate),
+		transiciones: make(map[rune]*Dstate),
 		posicion:     posicion,
 	}
 }
 
-func (d *Dstate) AddTransicion(simbolo string, estado *Dstate) {
+func (d *Dstate) AddTransicion(simbolo rune, estado *Dstate) {
 	d.transiciones[simbolo] = estado
 }
 
@@ -114,7 +114,7 @@ func NewDirectAfd(regex string) *DirectAfd {
 	return afd
 }
 
-func ExtendedNewDirectAfdI(regex []utils.RegexToken) *DirectAfd{
+func ExtendedNewDirectAfd(regex []utils.RegexToken) *DirectAfd{
 	afd := &DirectAfd{
 		transiciones:      make(map[string]map[string]string),
 		estadosAceptacion: []string{},
@@ -127,10 +127,13 @@ func ExtendedNewDirectAfdI(regex []utils.RegexToken) *DirectAfd{
 	afd.Arbol.ExtendedConstruirArbol(append(regex, utils.RegexToken{
 		Value: []rune{'#'},
 		IsOperator: "ENDOFTREE",
-	}))
+	}, utils.RegexToken{
+		Value: []rune{'^'},
+		IsOperator: "CATOPERATOR",
+	}, ))
 	// afd.Arbol.imprimirDetalle()
 	afd.construirAfd()
-
+	// fmt.Print("Afd contruido\n")
 	return afd
 }
 
@@ -154,54 +157,85 @@ func (afd *DirectAfd) obtenerOCrearEstado(positions []int) *Dstate {
 }
 
 // construirAfd construye el AFD a partir del árbol de expresión.
+// func (afd *DirectAfd) construirAfd() {
+// 	afd.estadoInicial = afd.obtenerOCrearEstado(afd.Arbol.Raiz.Firstpos)
+// 	pendientes := utils.NewStack()
+// 	pendientes.Push(afd.estadoInicial)
+// 	procesados := utils.NewStack()
+
+// 	// fmt.Print("Simbolos del arbol\n")
+// 	// for x, y := range afd.Arbol.Simbolos{
+// 	// 	fmt.Printf("Posicion %d con valor %s, followpos %d\n", x, y.Valor, y.Followpos)
+// 	// }
+// 	for pendientes.Size() > 0 {
+// 		fmt.Printf("Remaining %d\n", pendientes.Size())
+// 		curr_estado := pendientes.Pop().(*Dstate)
+// 		if !procesados.ElemInStack(curr_estado.nombre) {
+// 			simbolos_a_pos := make(map[rune][]int)
+// 			for _, pos := range curr_estado.posicion {
+// 				// fmt.Printf("indice %d Posicion %d\n", xy, pos)
+// 				simbolo := afd.Arbol.Simbolos[pos].Valor
+// 				if !strings.ContainsRune("ε#", simbolo) {
+// 					if simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] == nil {
+// 						simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = make([]int, 0)
+// 					}
+// 					simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = append(simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos...)
+// 					// fmt.Printf("Simbolos a pos: [simbolo:%s, pos: %d, followpos: %d]\n", simbolo, simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos)
+// 				}
+// 			}
+
+// 			for sim, pos := range simbolos_a_pos {
+// 				next_state := afd.obtenerOCrearEstado(pos)
+// 				curr_estado.AddTransicion(sim, next_state)
+// 				if !procesados.ElemInStack(next_state.nombre) && !pendientes.ElemInStack(next_state) {
+// 					pendientes.Push(next_state)
+// 				}
+// 			}
+// 			procesados.Push(curr_estado.nombre)
+// 			// fmt.Print("\nPendientes\n")
+// 			// printDstateStack(*pendientes)
+// 			// fmt.Print("\nProcesados\n")
+// 			// printDstateStack(*procesados)
+// 			// fmt.Print("\nEstaods\n")
+// 			// for val, state := range afd.estados {
+// 			// 	fmt.Printf("Estado %s con nombre %s tiene %d con transiciones\n", val, state.nombre, state.posicion)
+// 			// 	for sim, trans := range state.transiciones {
+// 			// 		fmt.Printf("Simbolo %s tiene transicion a %s\n", sim, trans.nombre)
+// 			// 	}
+// 			// }
+// 		}
+// 		// time.Sleep(1 * time.Second)
+// 	}
+// }
+
 func (afd *DirectAfd) construirAfd() {
-	afd.estadoInicial = afd.obtenerOCrearEstado(afd.Arbol.Raiz.Firstpos)
-	pendientes := utils.NewStack()
-	pendientes.Push(afd.estadoInicial)
-	procesados := utils.NewStack()
+    afd.estadoInicial = afd.obtenerOCrearEstado(afd.Arbol.Raiz.Firstpos)
+    pendientes := utils.NewStack()
+    pendientes.Push(afd.estadoInicial)
+    procesados := make(map[string]bool)
 
-	// fmt.Print("Simbolos del arbol\n")
-	// for x, y := range afd.Arbol.Simbolos{
-	// 	fmt.Printf("Posicion %d con valor %s, followpos %d\n", x, y.Valor, y.Followpos)
-	// }
-	for pendientes.Size() > 0 {
-		curr_estado := pendientes.Pop().(*Dstate)
-		if !procesados.ElemInStack(curr_estado.nombre) {
-			simbolos_a_pos := make(map[string][]int)
-			for _, pos := range curr_estado.posicion {
-				// fmt.Printf("indice %d Posicion %d\n", xy, pos)
-				simbolo := afd.Arbol.Simbolos[pos].Valor
-				if !strings.ContainsAny("ε#", simbolo) {
-					if simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] == nil {
-						simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = make([]int, 0)
-					}
-					simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = append(simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos...)
-					// fmt.Printf("Simbolos a pos: [simbolo:%s, pos: %d, followpos: %d]\n", simbolo, simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos)
-				}
-			}
+    for pendientes.Size() > 0 {
+		// fmt.Printf("Pendientes: %d\n", pendientes.Size())
+        curr_estado := pendientes.Pop().(*Dstate)
+        if !procesados[curr_estado.nombre] {
+            simbolos_a_pos := make(map[rune][]int)
+            for _, pos := range curr_estado.posicion {
+                simbolo := afd.Arbol.Simbolos[pos].Valor
+                if !strings.ContainsRune("ε#", simbolo) {
+                    simbolos_a_pos[simbolo] = append(simbolos_a_pos[simbolo], afd.Arbol.Simbolos[pos].Followpos...)
+                }
+            }
 
-			for sim, pos := range simbolos_a_pos {
-				next_state := afd.obtenerOCrearEstado(pos)
-				curr_estado.AddTransicion(sim, next_state)
-				if !procesados.ElemInStack(next_state.nombre) && !pendientes.ElemInStack(next_state) {
-					pendientes.Push(next_state)
-				}
-			}
-			procesados.Push(curr_estado.nombre)
-			// fmt.Print("\nPendientes\n")
-			// printDstateStack(*pendientes)
-			// fmt.Print("\nProcesados\n")
-			// printDstateStack(*procesados)
-			// fmt.Print("\nEstaods\n")
-			// for val, state := range afd.estados {
-			// 	fmt.Printf("Estado %s con nombre %s tiene %d con transiciones\n", val, state.nombre, state.posicion)
-			// 	for sim, trans := range state.transiciones {
-			// 		fmt.Printf("Simbolo %s tiene transicion a %s\n", sim, trans.nombre)
-			// 	}
-			// }
-		}
-		// time.Sleep(1 * time.Second)
-	}
+            for sim, pos := range simbolos_a_pos {
+                next_state := afd.obtenerOCrearEstado(pos)
+                curr_estado.AddTransicion(sim, next_state)
+                if !procesados[next_state.nombre] && !pendientes.ElemInStack(next_state) {
+                    pendientes.Push(next_state)
+                }
+            }
+            procesados[curr_estado.nombre] = true
+        }
+    }
 }
 
 func (afd *DirectAfd) MarshalJson() ([]byte, error) {
@@ -211,7 +245,7 @@ func (afd *DirectAfd) MarshalJson() ([]byte, error) {
 func (afd *DirectAfd) ToJson() *DAfdJson {
 	jsonMaker := &DAfdJson{
 		Estados:        []string{},
-		Alfabeto:       []string{},
+		Alfabeto:       []rune{},
 		EstadosFinales: []string{},
 		Transiciones:   make(map[string]map[string]string),
 	}
@@ -222,7 +256,7 @@ func (afd *DirectAfd) ToJson() *DAfdJson {
 			jsonMaker.EstadosFinales = utils.AppendStringIfNotInArr(estado.nombre, jsonMaker.EstadosFinales)
 		}
 		for sim, trans := range estado.transiciones {
-			jsonMaker.Alfabeto = utils.AppendStringIfNotInArr(sim, jsonMaker.Alfabeto)
+			jsonMaker.Alfabeto = utils.AppendRuneIfNotInArr(sim, jsonMaker.Alfabeto)
 			if jsonMaker.Transiciones[estado.nombre] == nil {
 				jsonMaker.Transiciones[estado.nombre] = make(map[string]string)
 			}
@@ -234,7 +268,7 @@ func (afd *DirectAfd) ToJson() *DAfdJson {
 
 type DAfdJson struct {
 	Estados        []string                     `json:"estados"`
-	Alfabeto       []string                     `json:"alfabeto"`
+	Alfabeto       []rune                     	`json:"alfabeto"`
 	EstadoInicial  string                       `json:"estado_inicial"`
 	EstadosFinales []string                     `json:"estados_finales"`
 	Transiciones   map[string]map[string]string `json:"transiciones"`

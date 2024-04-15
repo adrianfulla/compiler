@@ -11,42 +11,49 @@ import (
 
 func main() {
 	// serve()
-	// json := makeDirAfd("(a|b)*aab")
-	// afd, err := automatas.JsonToDfa(json)
-	// if err != nil {
-	// 	fmt.Printf("Error al pasar a DFA")
-	// } else {
-	// 	fmt.Printf("AFD [esIn: %s,\n esFin: %s,\n alfabeto:%s,\n transiciones:\n", afd.EstadoInicial, afd.EstadosFinales, afd.Alfabeto)
-	// 	for state, transicion := range afd.Transiciones {
-	// 		fmt.Printf("%s:{\n", state)
-	// 		for sim, next_state := range transicion {
-	// 			fmt.Printf("%s: %s\n", sim, next_state)
-	// 		}
-	// 		fmt.Printf("}\n")
-	// 	}
-	// 	fmt.Printf("]\n")
-	// 	automatas.ExtendedSimulateAfd("aaabcaabb", *afd)
-	// }
-	file := (`(* Lexer para Gramática No. 1 - Expresiones aritméticas simples para variables *)
+	file := (`
+	(* LexerparaGramaticaNo.4 *)
 
-	(* Introducir cualquier header aqui *)
-	
-	let delim = [' ''\t''\n']
-	let ws = delim+
-	let letter = ['A'-'Z''a'-'z']
-	let digit = ['0'-'9']
-	let id = letter(letter|digit)*
-	
-	rule tokens = 
-		ws
-	  | id        { return ID }               (* Cambie por una acción válida, que devuelva el token *)
-	  | '+'       { return PLUS }
-	  | '*'       { return TIMES }
-	  | '('       { return LPAREN }
-	  | ')'       { return RPAREN }
-	
-	(* Introducir cualquier trailer aqui *)`)
-	lexFile(file)
+(* Introducircualquierheaderaqui *)
+
+let ws = ' '+
+let letter = ['A'-'Z''a'-'z']
+let digit = ['0'-'9']
+let digits = digit+
+let id = letter+digit*
+
+rule tokens = 
+    ws
+  | id        { return ID }               (* Cambieporunaaccipnvalida,quedevuelvaeltoken *)
+  | ';'       { return SEMICOLON }
+  | ":="      { return ASSIGNOP }
+  | '<'       { return LT }
+  | '='       { return EQ }
+  | '+'       { return PLUS }
+  | '-'       { return MINUS }
+  | '*'       { return TIMES }
+  | '/'       { return DIV }
+  | '('       { return LPAREN }
+  | ')'       { return RPAREN }
+
+(* Introducircualquiertraileraqui *)`)
+
+	Scanner, err := lexFile(file)
+	if err != nil{
+		fmt.Println(err)
+	}else{
+		var input string
+		// fmt.Print("Input text: \n")
+		// fmt.Scanln(&input)
+		input = "Este"
+		AcceptedExp, err := Scanner.ScanFile(input)
+		if err != nil{
+			fmt.Println(err)
+		}
+		for _, accepted := range AcceptedExp{
+			fmt.Println(accepted)
+		}
+	}
 
 }
 
@@ -136,6 +143,10 @@ func makeArboldeNodos(Regex string) []byte {
 	}
 }
 
-func lexFile(ymlFile string){
-	lexer.LexYmlFile(ymlFile)
+func lexFile(ymlFile string) (*lexer.Scanner, error){
+	scanner, err := lexer.LexYmlFile(ymlFile)
+	if err != nil{
+		return nil, fmt.Errorf("error parsing yml file")
+	}
+	return scanner, nil
 }

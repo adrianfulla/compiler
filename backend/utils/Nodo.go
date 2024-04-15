@@ -5,7 +5,7 @@ import (
 )
 
 type Nodo struct {
-	Valor       string `json:"valor"`
+	Valor       rune `json:"valor"`
 	Izquierdo   *Nodo  `json:"izquierdo,omitempty"`
 	Derecho     *Nodo  `json:"derecho,omitempty"`
 	Leaf        *int   `json:"leaf"`
