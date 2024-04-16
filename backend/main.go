@@ -12,44 +12,40 @@ import (
 func main() {
 	// serve()
 	file := (`
-	(* LexerparaGramaticaNo.4 *)
+	(* Lexer para Gramática No. 1 - Expresiones aritmeticas simples para variables *)
 
-(* Introducircualquierheaderaqui *)
+(* Introducir cualquier header aqui *)
 
-let ws = ' '+
+let delim = [' ''\t''\n']
+let ws = delim+
 let letter = ['A'-'Z''a'-'z']
 let digit = ['0'-'9']
-let digits = digit+
-let id = letter+digit*
+let id = letter(letter|digit)*
 
 rule tokens = 
     ws
-  | id        { return ID }               (* Cambieporunaaccipnvalida,quedevuelvaeltoken *)
-  | ';'       { return SEMICOLON }
-  | ":="      { return ASSIGNOP }
-  | '<'       { return LT }
-  | '='       { return EQ }
+  | id        { return ID }               (* Cambie por una accion valida, que devuelva el token *)
   | '+'       { return PLUS }
-  | '-'       { return MINUS }
   | '*'       { return TIMES }
-  | '/'       { return DIV }
   | '('       { return LPAREN }
   | ')'       { return RPAREN }
 
-(* Introducircualquiertraileraqui *)`)
+(* Introducir cualquier trailer aqui *)`)
 
 	Scanner, err := lexFile(file)
 	if err != nil{
 		fmt.Println(err)
 	}else{
+		Scanner.PrintScanner()
 		var input string
 		// fmt.Print("Input text: \n")
 		// fmt.Scanln(&input)
-		input = "Este"
+		input = "Este es un ejemplo"
 		AcceptedExp, err := Scanner.ScanFile(input)
 		if err != nil{
 			fmt.Println(err)
 		}
+		fmt.Println("\nTokens aceptados")
 		for _, accepted := range AcceptedExp{
 			fmt.Println(accepted)
 		}

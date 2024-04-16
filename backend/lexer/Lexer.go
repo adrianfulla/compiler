@@ -31,7 +31,7 @@ func LexYmlFile(fileYml string) (*Scanner, error) {
 
 	// definitions["COMMENT"] = "'(* '([\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"]*)' *)'"
 	// definitions["SEMICOLON"] = "';'"
-	definitions["COMMENTS"] = "'(* '['A'-'Z''a'-'z''0'-'9'\".\"]*' *)'"
+	definitions["COMMENTS"] = "'(* '['A'-'Z''a'-'z''0'-'9'\" .\"]*' *)'"
 	definitions["DEFINITIONS"] = "'let '['A'-'Z''a'-'z']*\" = \"['A'-'Z''a'-'z''0'-'9'\"| []()\\'-*+?.\"]*"
 	definitions["TOKENRULES"] = "'rule tokens = '"
 	// definitions["TOKENS"] = "'|'?'(\\'')|('\"')?[^\"\\t\\n\\r\\b\\f\\v\\\"]*"
@@ -48,7 +48,7 @@ func LexYmlFile(fileYml string) (*Scanner, error) {
 		}
 		validatedDefinitions[token] = *validated
 	}
-	fmt.Println("Validated Def")
+	// fmt.Println("Validated Def")
 	posfixDefinitions := map[string][]utils.RegexToken{}
 	for token, def := range validatedDefinitions{
 		posfix, err := automatas.ExtendedInfixToPosfix(def, validatedDefinitions)
@@ -118,16 +118,19 @@ func (lex *Lexer) parseFile() (Scanner, error) {
 	passedHeader := false
 	for tokensFoundStack.Size() > 0{
 		token := tokensFoundStack.Pop().(*automatas.AcceptedExp)
-		fmt.Printf("Case %s %s\n", token.Token, token.Value)
+		// fmt.Printf("Case %s %s\n", token.Token, token.Value)
 		switch token.Token{
 		case "COMMENTS":
 			// fmt.Printf("Case %s\n", token.Token)
 			if newScanner.Title == ""{
 				newScanner.Title = token.Value
-			}else if !passedHeader{
+			}else if !passedHeader {
 				newScanner.Header = append(newScanner.Header, token.Value)
+			}else{
+				newScanner.Footer = append(newScanner.Header, token.Value)
 			}
 		case "DEFINITIONS":
+			passedHeader = true
 			// fmt.Printf("Case %s, %s\n", token.Token, token.Value)
 			// println(token.Token)
 			noLet := strings.TrimSpace(token.Value[4:])
@@ -139,13 +142,14 @@ func (lex *Lexer) parseFile() (Scanner, error) {
 			}
 			newScanner.Definitions[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1]) 
 		case "TOKENEXPRESIONS":
-			fmt.Printf("Case %s\n", token.Token)
+			passedHeader = true
+			// fmt.Printf("Case %s\n", token.Token)
 			newLexToken := utils.LexToken{
 				Regex: strings.TrimSpace(token.Value),
 			}
 			if tokensFoundStack.Peek().(*automatas.AcceptedExp).Token == "TOKENRETURNS"{
 				token = tokensFoundStack.Pop().(*automatas.AcceptedExp)
-				tokenName := token.Value[strings.Index(token.Value,"return"):strings.Index(token.Value,"}")]
+				tokenName := token.Value[strings.Index(token.Value,"return")+6:strings.Index(token.Value,"}")]
 				newLexToken.Token = strings.TrimSpace(tokenName)
 				if tokensFoundStack.Peek().(*automatas.AcceptedExp).Token == "COMMENTS"{
 					token = tokensFoundStack.Pop().(*automatas.AcceptedExp)
@@ -154,8 +158,10 @@ func (lex *Lexer) parseFile() (Scanner, error) {
 			}else{
 				newLexToken.Token = strings.TrimSpace(token.Value)
 			}
+			newScanner.Definitions[newLexToken.Token] = newLexToken.Regex
 			newScanner.Tokens = append(newScanner.Tokens, newLexToken)
 		case "TOKENRETURNS":
+			passedHeader = true
 			// fmt.Printf("Case %s\n", token.Token)
 			tokensFoundStack.Pop()
 		default:

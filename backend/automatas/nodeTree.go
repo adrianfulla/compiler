@@ -162,7 +162,7 @@ func (arbol *ArbolExpresion) imprimirDetalle() {
 
 func (arbol *ArbolExpresion) ExtendedConstruirArbol(posfix []utils.RegexToken) {
 	stack := utils.NewStack()
-	// fmt.Print("ACA\n")
+	
 	for _, char := range posfix{
 		canBeNull := false
 		firstpos := []int{}
