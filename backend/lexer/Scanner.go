@@ -28,27 +28,46 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 			fmt.Println(err)
 			return nil, err
 		}
+		// fmt.Println(token)
+		// validated.PrintForward()
 		validatedDefinitions[token] = *validated
 	}
 	
 
 	for _, token := range scan.Tokens {
-
+		if validatedDefinitions[token.Token].Head != nil{
+			continue
+		}
 		validated, err := automatas.ExtendedValidation(token.Regex)
 		if err != nil {
 			fmt.Println(err)
 			return nil, err
 		}
+		// fmt.Println(token)
+		// validated.PrintForward()
 		validatedDefinitions[token.Token] = *validated
 	}
+
+	// for token, def := range validatedDefinitions{
+	// 	fmt.Print(token)
+	// 	def.PrintForward()
+	// }
+
 	newDict, err := automatas.ReplaceReferenceIds(validatedDefinitions)
 	if err != nil{
 		return nil, err
 	}
 	validatedDefinitions = newDict
-	// fmt.Println("VAlidaded")
+	
+	tokenDefinitions := map[string]utils.DoublyLinkedList{}
+	for _, token := range scan.Tokens{
+		tokenDefinitions[token.Token] = validatedDefinitions[token.Token]
+	}
+
+	
+
 	posfixDefinitions := map[string][]utils.RegexToken{}
-	for token, def := range validatedDefinitions {
+	for token, def := range tokenDefinitions { 
 		posfix, err := automatas.ExtendedInfixToPosfix(def, validatedDefinitions)	
 		if err != nil {
 			fmt.Println(err)

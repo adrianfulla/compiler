@@ -12,21 +12,26 @@ import (
 func main() {
 	// serve()
 	file := (`
-	(* Lexer para Gramática No. 1 - Expresiones aritmeticas simples para variables *)
+	(* Lexer para Gramatica No. 2 - Expresiones aritméticas extendidas *)
 
 (* Introducir cualquier header aqui *)
 
-let delim = [' ''\t''\n']
+let delim = ['\s''\t''\n']
 let ws = delim+
 let letter = ['A'-'Z''a'-'z']
 let digit = ['0'-'9']
+let digits = digit+
 let id = letter(letter|digit)*
+let number = digits(('.')digits)?('E'['+''-']?digits)?
 
 rule tokens = 
-    ws
-  | id        { return ID }               (* Cambie por una accion valida, que devuelva el token *)
+    ws        { return WHITESPACE }               (* Cambie por una accion valida, que devuelva el token *)
+  | id        { return ID }
+  | number    { return NUMBER }
   | '+'       { return PLUS }
+  | '-'       { return MINUS }
   | '*'       { return TIMES }
+  | '/'       { return DIV }
   | '('       { return LPAREN }
   | ')'       { return RPAREN }
 
@@ -40,7 +45,7 @@ rule tokens =
 		var input string
 		// fmt.Print("Input text: \n")
 		// fmt.Scanln(&input)
-		input = "Este es un ejemplo"
+		input = "Este es un ejemplo  12345433434554.44 44   (ss)* "
 		AcceptedExp, err := Scanner.ScanFile(input)
 		if err != nil{
 			fmt.Println(err)

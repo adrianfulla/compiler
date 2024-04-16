@@ -140,10 +140,13 @@ func (lex *Lexer) parseFile() (Scanner, error) {
 				fmt.Println("error parsing string")
 				continue
 			}
-			newScanner.Definitions[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1]) 
+			if newScanner.Definitions[strings.TrimSpace(parts[0])] == ""{
+				newScanner.Definitions[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			}
+			 
 		case "TOKENEXPRESIONS":
 			passedHeader = true
-			// fmt.Printf("Case %s\n", token.Token)
+			// fmt.Printf("Case %s, %s\n", token.Token, token.Value)
 			newLexToken := utils.LexToken{
 				Regex: strings.TrimSpace(token.Value),
 			}
@@ -158,15 +161,18 @@ func (lex *Lexer) parseFile() (Scanner, error) {
 			}else{
 				newLexToken.Token = strings.TrimSpace(token.Value)
 			}
-			newScanner.Definitions[newLexToken.Token] = newLexToken.Regex
+			if newScanner.Definitions[newLexToken.Token] == ""{
+
+				newScanner.Definitions[newLexToken.Token] = newLexToken.Regex
+			}
 			newScanner.Tokens = append(newScanner.Tokens, newLexToken)
 		case "TOKENRETURNS":
 			passedHeader = true
 			// fmt.Printf("Case %s\n", token.Token)
-			tokensFoundStack.Pop()
+			// tokensFoundStack.Pop()
 		default:
 			// fmt.Printf("Default case %s\n", token.Token)
-			tokensFoundStack.Pop()
+			// tokensFoundStack.Pop()
 		}
 	}
 	return newScanner, nil

@@ -920,53 +920,57 @@ func shuntingYard(infix string) string {
 }
 
 func ReplaceReferenceIds(definitions map[string]utils.DoublyLinkedList) (map[string]utils.DoublyLinkedList, error){
-	i := 0
+	
 	operators := []string{
 		"OPENPARENTHESES",
 		"CLOSEPARENTHESES",
 		"KLEENE",
 		"CATOPERATOR",
 		"OROPERATOR",
+		"NULL",
 	}
-	for i < 2{
-		for _, def := range definitions{
-			currentToken := def.Head
-			// fmt.Println("\n\n\n")
+
+	for _, def := range definitions{
+		currentToken := def.Head
+		// fmt.Println("\n\n\n")
+		// def.PrintForward()
+		for currentToken != nil{
+			// fmt.Println(currentToken.Value)
 			// def.PrintForward()
-			for currentToken != nil{
+			operator := currentToken.Value.(utils.RegexToken).IsOperator
+			if currentToken.Value.(utils.RegexToken).IsOperator != "" && !utils.StringInStringArray(operator, operators){
 				// fmt.Println(currentToken.Value)
 				// def.PrintForward()
-				operator := currentToken.Value.(utils.RegexToken).IsOperator
-				if currentToken.Value.(utils.RegexToken).IsOperator != "" && !utils.StringInStringArray(operator, operators){
-					// fmt.Println(currentToken.Value)
-					// def.PrintForward()
-					if operator == "NULL"{
-						continue
-					}else if definitions[operator].Head == nil {
-						return nil, fmt.Errorf("regex parsing error: ident %s not recognized", operator)
-					}else{
-						// fmt.Println(currentToken.Value)
-						nextToken := currentToken.Next
-						currentToken.Prev.Next = definitions[operator].Head
-						
-						nextToken.Prev = definitions[operator].Tail
-						nextToken.Prev.Next = nextToken
-					}
+				if definitions[operator].Head == nil {
+					return nil, fmt.Errorf("regex parsing error: ident %s not recognized", operator)
+				}else{
 					// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
 					// fmt.Printf("Current Token %s \n", currentToken.Value)
 					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-					// def.PrintForward()
+				
+					nextToken := currentToken.Next
+					currentToken.Prev.Next = definitions[operator].Head
+					nextToken.Prev = definitions[operator].Tail
+					nextToken.Prev.Next = nextToken
+					currentToken = currentToken.Prev
+					// fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+					// fmt.Printf("Current Token %s \n", currentToken.Value)
+					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+					// fmt.Printf("Next Next Token %s \n", currentToken.Next.Next.Value)
+					// fmt.Printf("Next Token %s \n", currentToken.Next.Value)
 				}
-				// 
-				currentToken = currentToken.Next
+				
+				// def.PrintForward()
 			}
-			// time.Sleep(1 * time.Second)
-			// newDict.Tail = currentToken
-			// definitions[token] = newDict
+			// 
+			currentToken = currentToken.Next
 		}
-		// fmt.Print(i)
-		i++
+		// time.Sleep(1 * time.Second)
+		// newDict.Tail = currentToken
+		// definitions[token] = newDict
 	}
+	// fmt.Print(i)
+		
 	return definitions, nil
 }
 
