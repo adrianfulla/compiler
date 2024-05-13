@@ -10,51 +10,41 @@ import (
 )
 
 func main() {
-	// serve()
-	file := (`
-	(* Lexer para Gramatica No. 2 - Expresiones aritméticas extendidas *)
+	serve()
+	// file := (`(* Lexer para Gramatica No. 2 - Expresiones aritmeticas extendidas *)
 
-(* Introducir cualquier header aqui *)
+	// (* Introducir cualquier header aqui *)
+	
 
-let delim = ['\s''\t''\n']
-let ws = delim+
-let letter = ['A'-'Z''a'-'z']
-let digit = ['0'-'9']
-let digits = digit+
-let id = letter(letter|digit)*
-let number = digits(('.')digits)?('E'['+''-']?digits)?
+	// let digit = ['0'-'9']
+	// let digits = digit+
+	// let number = digits('.')digit
+	
+	// rule tokens = 
+	// 	number    { return NUMBER }
+	
+	
+	// (* Introducir cualquier trailer aqui *)
+	// `)
 
-rule tokens = 
-    ws        { return WHITESPACE }               (* Cambie por una accion valida, que devuelva el token *)
-  | id        { return ID }
-  | number    { return NUMBER }
-  | '+'       { return PLUS }
-  | '-'       { return MINUS }
-  | '*'       { return TIMES }
-  | '/'       { return DIV }
-  | '('       { return LPAREN }
-  | ')'       { return RPAREN }
-
-(* Introducir cualquier trailer aqui *)`)
-
-	Scanner, err := lexFile(file)
-	if err != nil{
-		fmt.Println(err)
-	}else{
-		Scanner.PrintScanner()
-		var input string
-		// fmt.Print("Input text: \n")
-		// fmt.Scanln(&input)
-		input = "Este es un ejemplo  12345433434554.44 44   (ss)* "
-		AcceptedExp, err := Scanner.ScanFile(input)
-		if err != nil{
-			fmt.Println(err)
-		}
-		fmt.Println("\nTokens aceptados")
-		for _, accepted := range AcceptedExp{
-			fmt.Println(accepted)
-		}
-	}
+	// Scanner, err := lexFile(file)
+	// if err != nil{
+	// 	fmt.Println(err)
+	// }else{
+	// 	Scanner.PrintScanner()
+	// 	var input string
+	// 	// fmt.Print("Input text: \n")
+	// 	// fmt.Scanln(&input)
+	// 	input = "12345433434554.44"
+	// 	AcceptedExp, err := Scanner.ScanFile(input)
+	// 	if err != nil{
+	// 		fmt.Println(err)
+	// 	}
+	// 	fmt.Println("\nTokens aceptados")
+	// 	for _, accepted := range AcceptedExp{
+	// 		fmt.Println(accepted)
+	// 	}
+	// }
 
 }
 

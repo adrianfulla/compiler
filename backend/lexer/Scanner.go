@@ -51,6 +51,7 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 	// for token, def := range validatedDefinitions{
 	// 	fmt.Print(token)
 	// 	def.PrintForward()
+	// 	fmt.Print("\n\n")
 	// }
 
 	newDict, err := automatas.ReplaceReferenceIds(validatedDefinitions)
@@ -61,13 +62,16 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 	
 	tokenDefinitions := map[string]utils.DoublyLinkedList{}
 	for _, token := range scan.Tokens{
+		fmt.Printf("Token %s with exp\n", token)
 		tokenDefinitions[token.Token] = validatedDefinitions[token.Token]
+		
 	}
 
 	
 
 	posfixDefinitions := map[string][]utils.RegexToken{}
 	for token, def := range tokenDefinitions { 
+		def.PrintForward()
 		posfix, err := automatas.ExtendedInfixToPosfix(def, validatedDefinitions)	
 		if err != nil {
 			fmt.Println(err)
