@@ -411,7 +411,17 @@ func ExtendedValidation(regex string) (*utils.DoublyLinkedList, error) {
 						}
 						tempToken = tempToken.Next
 						for tempToken.Value.(utils.RegexToken).Value[0] != '"' {
-							symbolsStack.Push(tempToken.Value.(utils.RegexToken).Value[0])
+							if tempToken.Value.(utils.RegexToken).Value[0] == '\\'{
+								escaped, err := escapeRune(tempToken.Next.Value.(utils.RegexToken).Value[0])
+							if err != nil {
+								escaped = tempToken.Next.Value.(utils.RegexToken).Value[0]
+							}
+							symbolsStack.Push(escaped)
+							tempToken = tempToken.Next
+							}else{
+								symbolsStack.Push(tempToken.Value.(utils.RegexToken).Value[0])
+							}
+
 							tempToken = tempToken.Next
 						}
 						tempToken = tempToken.Next
@@ -876,9 +886,9 @@ func shuntingYard(infix string) string {
 	precedence := map[rune]int{
 		'*': 4, '+': 4, '?': 4, '^': 3, '|': 2, '(': 1,
 	}
-	fmt.Println(infix)
+	// fmt.Println(infix)
 	infix = cleaner(infix)
-	fmt.Println(infix)
+	// fmt.Println(infix)
 	postfix := ""
 	stack := []rune{}
 
@@ -981,7 +991,7 @@ func shuntingYard(infix string) string {
 // 	return definitions, nil
 // }
 
-func ReplaceReferenceIds(definitions map[string]utils.DoublyLinkedList) (map[string]utils.DoublyLinkedList, error) {
+func ReplaceReferenceIds(definitions map[string]*utils.DoublyLinkedList) (map[string]*utils.DoublyLinkedList, error) {
     operators := []string{
         "OPENPARENTHESES",
         "CLOSEPARENTHESES",
@@ -991,63 +1001,67 @@ func ReplaceReferenceIds(definitions map[string]utils.DoublyLinkedList) (map[str
         "NULL",
     }
 
-    for tokenName, def := range definitions {
+    for _, def := range definitions {
         currentToken := def.Head
-        fmt.Printf("\n\n\n%s", tokenName)
-        def.PrintForward()
-        fmt.Print("\n")
+        // fmt.Printf("\n\n\n%s", tokenName)
+        // def.PrintForward()
+        // fmt.Print("\n")
         for currentToken != nil {
-            fmt.Printf("Assessing %s\n", currentToken.Value)
+            // fmt.Printf("Assessing %s\n", currentToken.Value)
             if operator := currentToken.Value.(utils.RegexToken).IsOperator; operator != "" && !utils.StringInStringArray(operator, operators) {
                 if definitions[operator].Head == nil {
                     return nil, fmt.Errorf("regex parsing error: ident %s not recognized", operator)
                 }
 
-                fmt.Printf("Found reference %s\n", operator)
-                fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
-                fmt.Printf("Current Token %s \n", currentToken.Value)
-                fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+                // fmt.Printf("Found reference %s\n", operator)
+                // fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
+                // fmt.Printf("Current Token %s \n", currentToken.Value)
+                // fmt.Printf("Next Token %s \n", currentToken.Next.Value)
 
                 // Guardar el nodo anterior y el siguiente
                 prevToken := currentToken.Prev
                 nextToken := currentToken.Next
+				newList := utils.DeepCopyList(definitions[operator])
 
                 // Conectar el nodo anterior al head de la nueva sublista
                 if prevToken != nil {
-                    prevToken.Next = definitions[operator].Head
-                }
+					prevToken.Next = newList.Head
+					newList.Head.Prev = prevToken
+				}
 
                 // Conectar la tail de la nueva sublista al nodo siguiente
-                definitions[operator].Tail.Next = nextToken
-                if nextToken != nil {
-                    nextToken.Prev = definitions[operator].Tail
-                }
+                
+				newList.Tail.Next = nextToken
+				if nextToken != nil {
+					nextToken.Prev = newList.Tail
+				}
 
                 // Actualizar el currentToken al prevToken de la nueva sublista para continuar la iteración
-                currentToken = definitions[operator].Tail
+                currentToken = newList.Tail
 
-                fmt.Println("Showing After change")
-                def.PrintForward()
-                fmt.Println("\n\n")
-                def.PrintReverse()
-                fmt.Printf("Current Token %s \n", currentToken.Value)
-                fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+                // fmt.Println("Showing After change")
+                // def.PrintForward()
+                // fmt.Println("\n\n")
+                // def.PrintReverse()
+                // fmt.Printf("Current Token %s \n", currentToken.Value)
+                // fmt.Printf("Next Token %s \n", currentToken.Next.Value)
+				// time.Sleep(5 * time.Second)
             }
 
             currentToken = currentToken.Next
-            // time.Sleep(2 * time.Second)
+            
         }
 
-        fmt.Print("\nAfter")
-        def.PrintForward()
-        fmt.Print("\n")
+        // fmt.Print("\nAfter")
+        // def.PrintForward()
+        // fmt.Print("\n")
     }
 
     return definitions, nil
 }
 
 
-func extendedShuntingYard(infix utils.DoublyLinkedList, definitions map[string]utils.DoublyLinkedList) ([]utils.RegexToken, error) {
+func extendedShuntingYard(infix *utils.DoublyLinkedList, definitions map[string]*utils.DoublyLinkedList) ([]utils.RegexToken, error) {
 	// infix.PrintForward()
 	precedence := map[string][]int{
 		"KLEENE": {4, 42}, "CATOPERATOR": {3, 94}, "OROPERATOR": {2, 124}, "OPENPARENTHESES": {1, 40},
@@ -1140,6 +1154,6 @@ func InfixToPosfix(regex string) (string, error) {
 	}
 }
 
-func ExtendedInfixToPosfix(regex utils.DoublyLinkedList, definitions map[string]utils.DoublyLinkedList) ([]utils.RegexToken, error) {
+func ExtendedInfixToPosfix(regex *utils.DoublyLinkedList, definitions map[string]*utils.DoublyLinkedList) ([]utils.RegexToken, error) {
 	return extendedShuntingYard(regex, definitions)
 }

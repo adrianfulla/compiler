@@ -90,3 +90,29 @@ func RuneType(r rune) string{
 	}
 }
 
+
+func DeepCopyList(original *DoublyLinkedList) *DoublyLinkedList {
+    if original.Head == nil {
+        return &DoublyLinkedList{}
+    }
+
+    copiedList := &DoublyLinkedList{}
+    originalNode := original.Head
+    var lastCopiedNode *LinkedNode = nil
+
+    // Copia cada nodo de la lista original a la nueva lista
+    for originalNode != nil {
+        newNode := &LinkedNode{Value: originalNode.Value}
+        if lastCopiedNode == nil {
+            copiedList.Head = newNode
+        } else {
+            lastCopiedNode.Next = newNode
+            newNode.Prev = lastCopiedNode
+        }
+        lastCopiedNode = newNode
+        originalNode = originalNode.Next
+    }
+
+    copiedList.Tail = lastCopiedNode
+    return copiedList
+}

@@ -6,45 +6,163 @@ import (
 
 	"github.com/adrianfulla/compiler/backend/automatas"
 	"github.com/adrianfulla/compiler/backend/lexer"
+	"github.com/adrianfulla/compiler/backend/parser"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	serve()
-	// file := (`(* Lexer para Gramatica No. 2 - Expresiones aritmeticas extendidas *)
+	// serve()
+	YalexFile := (`(* Yalex for reading yapars *)
 
-	// (* Introducir cualquier header aqui *)
+	let comment = '/''*'((' '|[^'/'])*)'*''/'
+	let lowercase = ['a'-'z']+
+	let uppercase = 'I'['A'-'H''J'-'Z']+|['A'-'H''J'-'Z']['A'-'Z']*
+	let token = '%''t''o''k''e''n'
+	let ignoreflag = 'I''G''N''O''R''E'
+	let twodots = ':'
+	let semicolon = ';'
+	let or = '|'
+	let splitter = '%''%'
+	let space = [' ''\t']+
+	let newline = ['\n']+
 	
+	rule tokens = 
+	  comment            { return COMMENT }
+	  | lowercase        { return LOWERCASE }  
+	  | uppercase        { return UPPERCASE }
+	  | token            { return TOKEN }
+	  | ignoreflag       { return IGNOREFLAG }
+	  | twodots          { return TWODOTS }	
+	  | semicolon        { return SEMICOLON}
+	  | or               { return OR }
+	  | splitter         { return SPLITTER }
+	  | space            { return SPACE }
+	  | newline          { return NEWLINE }
+	
+	  (* Footer *)
+	`)
 
-	// let digit = ['0'-'9']
-	// let digits = digit+
-	// let number = digits('.')digit
-	
-	// rule tokens = 
-	// 	number    { return NUMBER }
-	
-	
-	// (* Introducir cualquier trailer aqui *)
-	// `)
+	YaparFile := (`/* Yapar for reading yapars */
 
-	// Scanner, err := lexFile(file)
-	// if err != nil{
-	// 	fmt.Println(err)
-	// }else{
-	// 	Scanner.PrintScanner()
-	// 	var input string
-	// 	// fmt.Print("Input text: \n")
-	// 	// fmt.Scanln(&input)
-	// 	input = "12345433434554.44"
-	// 	AcceptedExp, err := Scanner.ScanFile(input)
-	// 	if err != nil{
-	// 		fmt.Println(err)
-	// 	}
-	// 	fmt.Println("\nTokens aceptados")
-	// 	for _, accepted := range AcceptedExp{
-	// 		fmt.Println(accepted)
-	// 	}
-	// }
+	%token COMMENT LOWERCASE UPPERCASE TOKEN IGNOREFLAG TWODOTS SEMICOLON OR SPLITTER SPACE NEWLINE
+	IGNORE SPACE
+	IGNORE COMMENT
+	
+	%%
+	
+	file:
+		filedeclarations SPLITTER newlines filerules
+	;
+	
+	filedeclarations:
+	  declarations
+	  | newlines declarations
+	;
+	
+	filerules:
+	  rules
+	  | rules newlines
+	;
+	
+	/* Declarations section */
+	declarations:
+		declaration
+	  | declarations declaration
+	;
+	
+	declaration:
+		tokendeclaration
+	  | ignoredeclaration
+	;
+	
+	tokendeclaration:
+		TOKEN idlist newlines
+	;
+	
+	ignoredeclaration:
+		IGNOREFLAG idlist newlines
+	;
+	
+	idlist:
+		UPPERCASE
+	  | idlist UPPERCASE
+	;
+	
+	/* Rules section */
+	rules:
+		rule
+	  | rules rulewithnewline
+	;
+	
+	rulewithnewline:
+		newlines rule
+	  | rule
+	;
+	
+	rule:
+		rulename production semicoloncomposed
+	;
+	
+	semicoloncomposed:
+		SEMICOLON
+	  | newlines SEMICOLON
+	;
+	
+	rulename:
+		LOWERCASE TWODOTS
+	  | LOWERCASE TWODOTS newlines
+	;
+	
+	production:
+		productionterm
+	  | production orcomposed productionterm
+	;
+	
+	orcomposed:
+		OR
+	  | newlines OR
+	;
+	
+	productionterm:
+		idorliteral
+	  | productionterm idorliteral
+	;
+	
+	idorliteral:
+		UPPERCASE
+	  | LOWERCASE
+	;
+	
+	newlines:
+	  NEWLINE
+	  | newlines NEWLINE
+	;`)
+
+	Scanner, err := lexFile(YalexFile)
+	if err != nil{
+		fmt.Println(err)
+	}else{
+		Scanner.PrintScanner()
+		// var input string
+		// fmt.Print("Input text: \n")
+		// fmt.Scanln(&input)
+		// input = "12 3 21 "
+		// AcceptedExp, err := Scanner.ScanFile(input)
+		// if err != nil{
+		// 	fmt.Println(err)
+		// }
+		// fmt.Println("\nTokens aceptados")
+		// for _, accepted := range AcceptedExp{
+		// 	fmt.Println(accepted)
+		
+		Parser, err := lexYaparFile(YaparFile, Scanner)
+		if err != nil{
+			fmt.Println(err)
+		}else{
+			Parser.PrintParser()
+		}
+		}
+	
 
 }
 
@@ -140,4 +258,11 @@ func lexFile(ymlFile string) (*lexer.Scanner, error){
 		return nil, fmt.Errorf("error parsing yml file")
 	}
 	return scanner, nil
+}
+func lexYaparFile(yaparFile string, scanner *lexer.Scanner) (*parser.Parser, error){
+	parser, err := parser.LexYaparFile(yaparFile, scanner)
+	if err != nil{
+		return nil, fmt.Errorf("error parsing yapar file")
+	}
+	return parser, nil
 }

@@ -7,6 +7,7 @@ replace github.com/adrianfulla/compiler/backend/automatas => ./automatas
 require (
 	github.com/adrianfulla/compiler/backend/automatas v0.0.0-00010101000000-000000000000
 	github.com/adrianfulla/compiler/backend/lexer v0.0.0-00010101000000-000000000000
+	github.com/adrianfulla/compiler/backend/parser v0.0.0-00010101000000-000000000000
 	github.com/gin-gonic/gin v1.9.1
 )
 
@@ -41,3 +42,5 @@ require (
 replace github.com/adrianfulla/compiler/backend/utils => ./utils
 
 replace github.com/adrianfulla/compiler/backend/lexer => ./lexer
+
+replace github.com/adrianfulla/compiler/backend/parser => ./parser

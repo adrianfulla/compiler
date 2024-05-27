@@ -19,7 +19,7 @@ type Scanner struct {
 func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 	// scan.PrintScanner()
 	afdStack := map[string]automatas.DAfdJson{}
-	validatedDefinitions := map[string]utils.DoublyLinkedList{}
+	validatedDefinitions := map[string]*utils.DoublyLinkedList{}
 
 	for token, def := range scan.Definitions {
 		// fmt.Println(token)
@@ -30,7 +30,7 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 		}
 		// fmt.Println(token)
 		// validated.PrintForward()
-		validatedDefinitions[token] = *validated
+		validatedDefinitions[token] = validated
 	}
 	
 
@@ -45,7 +45,7 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 		}
 		// fmt.Println(token)
 		// validated.PrintForward()
-		validatedDefinitions[token.Token] = *validated
+		validatedDefinitions[token.Token] = validated
 	}
 
 	// for token, def := range validatedDefinitions{
@@ -60,9 +60,9 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 	}
 	validatedDefinitions = newDict
 	
-	tokenDefinitions := map[string]utils.DoublyLinkedList{}
+	tokenDefinitions := map[string]*utils.DoublyLinkedList{}
 	for _, token := range scan.Tokens{
-		fmt.Printf("Token %s with exp\n", token)
+		// fmt.Printf("Token %s with exp\n", token)
 		tokenDefinitions[token.Token] = validatedDefinitions[token.Token]
 		
 	}
@@ -71,7 +71,7 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 
 	posfixDefinitions := map[string][]utils.RegexToken{}
 	for token, def := range tokenDefinitions { 
-		def.PrintForward()
+		// def.PrintForward()
 		posfix, err := automatas.ExtendedInfixToPosfix(def, validatedDefinitions)	
 		if err != nil {
 			fmt.Println(err)
@@ -107,11 +107,11 @@ func (scan *Scanner) parseFile(file string, afdStack map[string]automatas.DAfdJs
 	tokensFound := []*automatas.AcceptedExp{}
 	for maps := range ch {
 		for index, result := range maps {
-			fmt.Println(index)
+			// fmt.Println(index)
 			for result.Size() > 0 {
 				res := result.Pop().(*automatas.AcceptedExp)
 				res.Token = index
-				fmt.Println(res)
+				// fmt.Println(res)
 				tokensFound = AddOrUpdateExp(res, tokensFound)
 			}
 		}

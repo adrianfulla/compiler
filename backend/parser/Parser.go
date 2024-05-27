@@ -1,4 +1,4 @@
-package lexer
+package parser
 
 import (
 	// "fmt"
@@ -12,31 +12,38 @@ import (
 
 	"github.com/adrianfulla/compiler/backend/automatas"
 	"github.com/adrianfulla/compiler/backend/utils"
+	"github.com/adrianfulla/compiler/backend/lexer"
 )
 
-type Lexer struct {
+type Parser struct {
 	file       string
-	afdStack   map[string]automatas.DAfdJson
+	scanner   *lexer.Scanner
 	TokenStack utils.Stack `json:"token_stack"`
+	ProductionStack utils.Stack `json:"production_stack"`
 }
 
-func LexYmlFile(fileYml string) (*Scanner, error) {
+func LexYaparFile(fileYapar string, lexScanner *lexer.Scanner) (*Parser, error) {
 	// fmt.Print(fileYml)
-	lex := &Lexer{
-		file: fileYml,
-		afdStack: make(map[string]automatas.DAfdJson),
+	lex := &Parser{
+		file: fileYapar,
+		scanner: lexScanner,
 	}
 
 	definitions := map[string]string{}
 
-	// definitions["COMMENT"] = "'(* '([\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"]*)' *)'"
-	// definitions["SEMICOLON"] = "';'"
-	definitions["COMMENTS"] = "'(* '['A'-'Z''a'-'z''0'-'9'\" .\"]*' *)'"
-	definitions["DEFINITIONS"] = "'let '['A'-'Z''a'-'z']*\" = \"['A'-'Z''a'-'z''0'-'9'\"| []()\\'\\\"\\\\-*+?.\"]*"
-	definitions["TOKENRULES"] = "'rule tokens = '"
-	// definitions["TOKENS"] = "'|'?'(\\'')|('\"')?[^\"\\t\\n\\r\\b\\f\\v\\\"]*"
-	definitions["TOKENEXPRESIONS"] = "(['A'-'Z''a'-'z']+'\\n')|(\"'\"[^\"\\t\\s\\n \"]+\"'\")|(['A'-'Z''a'-'z']+[' ''\\t'][' ''\\t']+)"
-	definitions["TOKENRETURNS"] = "\"{ return \"['A'-'Z']*\" }\""
+	
+	definitions["COMMENT"] = "'/''*'((' '|[^'/'])*)'*''/'"
+	definitions["LOWERCASE"] = "['a'-'z']+"
+	definitions["UPPERCASE"] = "'I'['A'-'H''J'-'Z']+|['A'-'H''J'-'Z']['A'-'Z']*"
+	definitions["TOKEN"] = "'%'\"token\""
+	definitions["IGNOREFLAG"] = "\"IGNORE\""
+	definitions["TWODOTS"] = "'%'\":\""
+	definitions["SEMICOLON"] = "';'"
+	definitions["OR"] = "'|'"
+	definitions["SPLITTER"] = "'%''%'"
+	definitions["SPACE"] = "[' ''\\t']"
+	definitions["NEWLINE"] = "['\\n']"
+	
 	
 	validatedDefinitions := map[string]*utils.DoublyLinkedList{}
 	
@@ -72,7 +79,7 @@ func LexYmlFile(fileYml string) (*Scanner, error) {
 	return &Scanner, nil
 }
 
-func (lex *Lexer) parseFile() (Scanner, error) {
+func (lex *Lexer) parseFile() (lexer.Scanner, error) {
 
 	ch := make(chan map[string]utils.Stack, len(lex.afdStack))
 	var wg sync.WaitGroup
@@ -108,7 +115,7 @@ func (lex *Lexer) parseFile() (Scanner, error) {
 		tokensFoundStack.Push(tokenFound)
 	}
 
-	newScanner := Scanner{
+	newScanner := lexer.Scanner{
 		Title: "",
 		Header: []string{},
 		Footer: []string{},
@@ -154,14 +161,9 @@ func (lex *Lexer) parseFile() (Scanner, error) {
 				token = tokensFoundStack.Pop().(*automatas.AcceptedExp)
 				tokenName := token.Value[strings.Index(token.Value,"return")+6:strings.Index(token.Value,"}")]
 				newLexToken.Token = strings.TrimSpace(tokenName)
-				if !tokensFoundStack.IsEmpty() && tokensFoundStack.Peek().(*automatas.AcceptedExp).Token == "COMMENTS"{
+				if tokensFoundStack.Peek().(*automatas.AcceptedExp).Token == "COMMENTS"{
 					token = tokensFoundStack.Pop().(*automatas.AcceptedExp)
-					if !tokensFoundStack.IsEmpty(){
-						newLexToken.Action = strings.TrimSpace(token.Value)
-					}else{
-						tokensFoundStack.Push(token)
-					}
-				
+					newLexToken.Action = strings.TrimSpace(token.Value)
 				}
 			}else{
 				newLexToken.Token = strings.TrimSpace(token.Value)
@@ -213,3 +215,6 @@ func (lex *Lexer) searchYalex(index string, ch chan<-map[string]utils.Stack) {
 }
 
 
+func (parser *Parser) PrintParser(){
+	fmt.Print("PRINT PARSER - TODO")
+}
