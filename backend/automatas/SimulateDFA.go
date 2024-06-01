@@ -77,7 +77,7 @@ func moveState(curr_state string, char rune, transiciones map[string]map[string]
 func ExtendedSimulateAfd(expresion string, afd DAfdJson) utils.Stack {
 	acceptedStack := utils.Stack{}
 	traveled := 0
-
+	// fmt.Print("ACA")
 	for traveled < len(expresion)-1 {
 		// fmt.Printf("\nTraveled:%d/ %d", traveled, len(expresion))
 		tryExp := expresion[traveled:]

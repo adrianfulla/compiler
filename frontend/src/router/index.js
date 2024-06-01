@@ -22,6 +22,16 @@ const router = createRouter({
       name: 'automatas',
       component: () => import('../views/AutomataView.vue')
     },
+    {
+      path: '/analizador-lexico',
+      name: 'analizador-lexico',
+      component: () => import('../views/LexAnalyzer.vue')
+    },
+    {
+      path: '/parseo',
+      name: 'parseo',
+      component: () => import('../views/ParseAnalyzer.vue')
+    },
   ]
 })
 

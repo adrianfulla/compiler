@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	// "errors"
 	"fmt"
 	"sync"
 
@@ -22,18 +23,33 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 	validatedDefinitions := map[string]*utils.DoublyLinkedList{}
 
 	for token, def := range scan.Definitions {
-		// fmt.Println(token)
+		// fmt.Println(token, def)
 		validated, err := automatas.ExtendedValidation(def)
 		if err != nil {
 			fmt.Println(err)
 			return nil, err
 		}
 		// fmt.Println(token)
-		// validated.PrintForward()
+		
 		validatedDefinitions[token] = validated
 	}
+	errorNode := &utils.LinkedNode{
+		Value: utils.RegexToken{
+			Value: []rune{rune('_')},
+		},
+		Prev: nil,
+		Next: nil,
+	}
+	validatedDefinitions["ERROR"] = &utils.DoublyLinkedList{
+		Head: errorNode,
+		Tail: errorNode,
+	}
+	scan.Tokens = append(scan.Tokens, utils.LexToken{
+		Token: "ERROR",
+		Regex: "_",
+		Action: "",
+	})
 	
-
 	for _, token := range scan.Tokens {
 		if validatedDefinitions[token.Token].Head != nil{
 			continue
@@ -68,7 +84,6 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 	}
 
 	
-
 	posfixDefinitions := map[string][]utils.RegexToken{}
 	for token, def := range tokenDefinitions { 
 		// def.PrintForward()
@@ -131,7 +146,7 @@ func (scan *Scanner) PrintScanner(){
 	fmt.Printf("Header for Scanner: %s\n", scan.Header)
 	fmt.Printf("Definitions for Scanner:\n" )
 	for token, def := range scan.Definitions{
-		fmt.Printf("Defition of %s is %s\n",token, def)
+		fmt.Printf("Definition of %s is %s\n",token, def)
 	}
 	fmt.Printf("Tokens for Scanner:\n" )
 	for _,token := range scan.Tokens{
@@ -139,4 +154,8 @@ func (scan *Scanner) PrintScanner(){
 	}
 
 	fmt.Printf("Footer for Scanner: %s\n", scan.Footer)
+}
+
+func (scan *Scanner) ToJson() []byte{
+	return nil
 }

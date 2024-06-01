@@ -32,11 +32,12 @@ func LexYmlFile(fileYml string) (*Scanner, error) {
 	// definitions["COMMENT"] = "'(* '([\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"]*)' *)'"
 	// definitions["SEMICOLON"] = "';'"
 	definitions["COMMENTS"] = "'(* '['A'-'Z''a'-'z''0'-'9'\" .\"]*' *)'"
-	definitions["DEFINITIONS"] = "'let '['A'-'Z''a'-'z']*\" = \"['A'-'Z''a'-'z''0'-'9'\"| []()\\'\\\"\\\\-*+?.\"]*"
+	definitions["DEFINITIONS"] = "'let '['A'-'Z''a'-'z']*\" = \"['A'-'Z''a'-'z''0'-'9'\"| []()\\'\\\"\\\\-*+?/%:;^.\"]*"
 	definitions["TOKENRULES"] = "'rule tokens = '"
 	// definitions["TOKENS"] = "'|'?'(\\'')|('\"')?[^\"\\t\\n\\r\\b\\f\\v\\\"]*"
 	definitions["TOKENEXPRESIONS"] = "(['A'-'Z''a'-'z']+'\\n')|(\"'\"[^\"\\t\\s\\n \"]+\"'\")|(['A'-'Z''a'-'z']+[' ''\\t'][' ''\\t']+)"
 	definitions["TOKENRETURNS"] = "\"{ return \"['A'-'Z']*\" }\""
+	definitions["ERROR"]	= "_"
 	
 	validatedDefinitions := map[string]*utils.DoublyLinkedList{}
 	

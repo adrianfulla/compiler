@@ -18,7 +18,7 @@
               <router-link class="nav-link" to="/analizador-lexico">Analizador léxico</router-link>
             </li>
             <li class="nav-item">
-              <router-link class="nav-link" to="/generador-analizadores">Generador de analizadores léxicos</router-link>
+              <router-link class="nav-link" to="/parseo">Parseador</router-link>
             </li>
           </ul>
         </div>

@@ -93,6 +93,41 @@ class Afd:
         return dot
 
 
+class LRState:
+    def __init__(self, id, items, transitions):
+        self.id = id
+        self.items = items
+        self.transitions = transitions
+
+    def __repr__(self):
+        return f"State {self.id}"
+
+class LR0Automaton:
+    def __init__(self, states, start_state):
+        self.states = states
+        self.start_state = start_state
+
+    def visualize_lr0(self):
+        dot = Digraph(comment='LR(0) Automaton')
+        dot.attr(rankdir='LR')
+        dot.node('start', '', shape='point', style='invisible')
+
+        for state in self.states:
+            label = "\n".join([f"{item['production']['head']} -> " +
+                               " ".join(item['production']['body'][0][:item['subposition']] + ['•'] +
+                                        item['production']['body'][0][item['subposition']:])
+                               for item in state.items])
+            dot.node(str(state.id), label=label, shape='circle')
+
+        dot.edge('start', str(self.start_state), style='bold')
+
+        for state in self.states:
+            for symbol, destination in state.transitions.items():
+                dot.edge(str(state.id), str(destination), label=symbol)
+
+        return dot
+
+
 
 
 
@@ -123,6 +158,37 @@ def afd():
         dot.render('./images/afd'+now.strftime("%H:%M:%S"), view=False, format='jpg')
         return send_file('./images/afd'+now.strftime("%H:%M:%S")+'.jpg', mimetype='image/jpg')
     return {'recibido':data}
+
+@app.route('/lr0', methods=['POST'])
+def lr0():
+    data = request.get_json()
+    if not data or 'states' not in data:
+        # Esto te ayudará a entender qué se recibió en caso de error
+        print("Received data:", data)
+        return {'message': 'Invalid or no data provided'}, 400
+    
+    try:
+        states = [LRState(state['id'], state['items'], state['transitions']) for state in data['states']]
+        start_state = data['start_state']
+        lr0_automaton = LR0Automaton(states, start_state)
+
+        if lr0_automaton:
+            dot = lr0_automaton.visualize_lr0()
+            now = datetime.now()
+            filename = f'./images/lr0_{now.strftime("%H-%M-%S")}'
+            dot.render(filename, view=False, format='png')
+            return send_file(f'{filename}.png', mimetype='image/png')
+    except KeyError as e:
+        print(f"KeyError during processing: {e}")
+        # Devuelve un mensaje más útil al cliente
+        return {'message': f'Missing key in data: {e}'}, 400
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return {'message': f'An internal error occurred: {str(e)}'}, 500
+
+    return {'message': 'No data provided'}
+
+
 
 if __name__ == '__main__':
     app.run(host='localhost', port=5000)

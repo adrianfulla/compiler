@@ -11,11 +11,11 @@ services:
       - ./backend:/app/backend
     # command: go run main.go
 
-  # frontend:
-  #   build:
-  #     context: ./
-  #     dockerfile: frontend/Dockerfile
-  #   ports:
-  #     - "8081:80"
-  #   volumes:
-  #     - ./frontend:/app/frontend
+  frontend:
+    build:
+      context: ./
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8081:80"
+    volumes:
+      - ./frontend:/app/frontend
