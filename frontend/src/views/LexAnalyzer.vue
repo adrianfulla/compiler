@@ -16,15 +16,18 @@
                 <button class="btn btn-success float-center" @click="triggerSendYalex">Validar Yalex</button>
             </div>
         </div>
-        <div class="card" id="analize-text" v-if="yalexExitoso">
+        <div class="card mb-4" id="analize-text" v-if="yalexExitoso">
             <div class="card-header">
                 Analizador
             </div>
             <div class="card-body">
                 <TextBlock :sendSignal="sendSignalLex" @sendData="receiveDataLex"/>
             </div>
-            <div class="card-footer ">
-                <button class="btn btn-success float-center" @click="triggerSendLex">Analizar</button>
+            <div class="card-footer">
+                <button class="btn btn-success float-center mb-2" @click="triggerSendLex">Analizar</button>
+                <div v-if="expresionValida">
+                    <div class="alert alert-danger">Cadena no pudo ser analizada, revisar YaLex</div>
+                </div>
                 <div v-if="tokens.length > 0">
                     <h3>Resultados del análisis:</h3>
                     <table class="table">
@@ -37,7 +40,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="token in tokens" :key="token.start">
+                            <tr v-for="token in tokens" :key="token.start" :class="{'table-danger': token.token === 'ERROR'}">
                                 <td>{{ token.token }}</td>
                                 <td>{{ token.value }}</td>
                                 <td>{{ token.start }}</td>
@@ -45,6 +48,9 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div v-else="expresionValida && token.length === 0">
+                  <div class="alert alert-warning">Hay errores lexicos</div>
                 </div>
             </div>
         </div>
@@ -65,6 +71,7 @@ import TextBlock from '../components/LexAnalyzer/TextBlock.vue';
         yalexExitoso: false,
         yalex: null,
         tokens: [],
+        expresionValida: false,
       };
     },
     methods: {
@@ -126,10 +133,12 @@ import TextBlock from '../components/LexAnalyzer/TextBlock.vue';
           if (response.ok) {
             const result = await response.json()
             this.tokens = result.reverse()
+            this.expresionValida = false
 
           } else {
             console.error('Error, expresion no pudo ser analizada');
             this.tokens = []
+            this.expresionValida = true
           }
         } catch (error) {
           console.error('Error en la solicitud:', error);

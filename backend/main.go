@@ -193,20 +193,35 @@ func serve() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		response := makeDirAfd(request.Regex)
+		response,_, err := makeDirAfd(request.Regex)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.Data(http.StatusOK, "application/json", response)
 	})
-	r.POST("/automata/afd/", func(c *gin.Context) {
+	r.POST("/automata/afd/simulate/", func(c *gin.Context) {
 		var request struct {
 			Regex string `json:"regex"`
-			// Afd   	`json:"afd"`
+			Simulate string   	`json:"simulate"`
 		}
-
+		
 		if err := c.BindJSON(&request); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		response := makeDirAfd(request.Regex)
+		_,afd, err := makeDirAfd(request.Regex)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		response, val, err := simulateDirAfd(afd, request.Simulate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fmt.Println(val, response)
 		c.Data(http.StatusOK, "application/json", response)
 	})
 	r.POST("/lexer/create/", func(c *gin.Context) {
@@ -258,6 +273,7 @@ func serve() {
 		// fmt.Print("ACA2")
 		parser, err := lexYaparFile(request.Yapar, Scanner)
 		if err != nil {
+			fmt.Print(err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -314,22 +330,37 @@ func serve() {
 	r.Run()
 }
 
-func makeDirAfd(Regex string) []byte {
+func makeDirAfd(Regex string) ([]byte, *automatas.DirectAfd, error) {
 	// Prueba de la función de validación
 	postfix, err := automatas.InfixToPosfix(Regex)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return nil
+		return nil, nil, err
 	} else {
 		afd := automatas.NewDirectAfd(postfix)
 		jsonAfd, err := afd.MarshalJson()
 		if err != nil {
 			fmt.Println("Error al convertir a JSON:", err)
-			return nil
+			return nil, nil,err
 		}
 
-		return jsonAfd
+		return jsonAfd, afd,nil
 	}
+}
+
+func simulateDirAfd(afd *automatas.DirectAfd, simulate string) ([]byte,string, error){
+	afdJson := afd.ToJson()
+	returnVal := "false"
+	_,_,err := automatas.SimulateDFA(simulate, afdJson.EstadoInicial, afdJson.EstadosFinales, afdJson.Transiciones)
+	if err == nil{
+		returnVal = "true"
+	}
+
+	// fmt.Print(returnVal)
+	response := []byte(returnVal)
+
+	return response, returnVal, nil
+
 }
 
 func makeArboldeNodos(Regex string) []byte {
@@ -392,7 +423,7 @@ func lexFile(ymlFile string) (*lexer.Scanner, error) {
 func lexYaparFile(yaparFile string, scanner *lexer.Scanner) (*parser.Parser, error) {
 	parser, err := parser.LexYaparFile(yaparFile, scanner)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing yapar file")
+		return nil, err
 	}
 	// parser.PrintParser()
 	return parser, nil

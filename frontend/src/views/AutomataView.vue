@@ -29,6 +29,23 @@
         </div>
         </div>  
       </div>
+      <div class="card">
+        <div class="card-header">
+          Ingrese la cadena a simular
+        </div>
+        <div class="card-body">
+          <TextBlock :sendSignal="sendSimulateString" @sendData="receiveSimulateString"/>
+          <button class="btn btn-success float-center" @click="triggerSendSimulateString">Simular</button>
+        </div>
+        <div class="card-footer" v-if="simulationReturn">
+            <div class="alert alert-success" v-if="simulationResult">
+                La cadena fue aceptada por el automata
+            </div>
+            <div class="alert alert-warning" v-else>
+                La cadena no fue aceptada por el automata
+            </div>
+        </div>
+      </div>
       </div>
     </div>
   </template>
@@ -36,17 +53,23 @@
   <script>
   import NodeTree from '../components/Automata/NodeTree.vue'; // Asegúrate de que la ruta del import sea correcta
   import DirAFD from '../components/Automata/DirAFD.vue'
+  import TextBlock from '../components/LexAnalyzer/TextBlock.vue';
+  
   export default {
     name: 'TreeView',
     components: {
       NodeTree,
-      DirAFD
+      DirAFD,
+      TextBlock
     },
     data() {
       return {
         regex: '',
         mostrar_automata: false,
-        afd: null
+        afd: null,
+        sendSimulateString: false,
+        simulationReturn: false,
+        simulationResult: null
       };
     },
     methods:{
@@ -58,8 +81,40 @@
         handleAfdReturn(afd){
           console.log(afd)
           this.afd = afd
-        }
-    },
+        },
+        triggerSendSimulateString() {
+          this.sendSimulateString = true;
+          // console.log("ACA")
+    
+          // Restablecer la señal después de activarla
+          this.$nextTick(() => {
+            this.sendSimulateString = false;
+          })
+        },
+        receiveSimulateString(data){
+          this.simulateString(data)
+        },
+
+        async simulateString(data){
+          try { 
+              const response = await fetch('http://localhost:8080/automata/afd/simulate/',{
+                method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({Regex:this.regex, Simulate: data})
+              }); 
+              if (response.ok) {
+                this.simulationReturn = true
+                this.simulationResult = await response.json()
+              } else {
+                console.error('Error, hubo un error al simular');
+              }
+            } catch (error) {
+              console.error('Error en la solicitud:', error);
+            }
+        },
+      },
     created() {
     // Aquí podrías hacer la llamada a la API para obtener los datos del árbol si es necesario
     // o utilizar una tienda de Vuex/Pinia para obtener los datos del árbol

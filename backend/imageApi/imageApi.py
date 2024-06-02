@@ -20,7 +20,13 @@ class Nodo:
 
     @staticmethod
     def desde_dict(d):
-        valor = d.get('valor')
+        # Asumiendo que 'valor' es un entero ASCII, convertirlo a un caracter
+        valor_ascii = d.get('valor')
+        if isinstance(valor_ascii, int):  # Verificar si el valor es un entero (ASCII)
+            valor = chr(valor_ascii)  # Convertir ASCII a caracter
+        else:
+            valor = valor_ascii  # Si no es un entero, asumir que ya es un caracter
+
         leaf = d.get('leaf', None)
         firstpos = d.get('firstpos', [])
         lastpos = d.get('lastpos', [])
@@ -126,9 +132,6 @@ class LR0Automaton:
                 dot.edge(str(state.id), str(destination), label=symbol)
 
         return dot
-
-
-
 
 
 @app.route('/')

@@ -35,6 +35,9 @@ export default {
             this.dir_afd = await firstResponse.json()
             this.fetchImage(this.dir_afd)
             this.emitValue()
+        }else{
+          const errMessage = await firstResponse.json()
+          alert(errMessage.error)
         }
       } catch (error) {
         console.error('Error al hacer la solicitud: ', error)

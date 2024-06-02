@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h3>Analizador Lexico</h3>
+        <h3>Analizador Sintáctico</h3>
     </div>
     <div>
         <div class="card mb-2" id="yalex-text">
