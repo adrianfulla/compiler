@@ -991,6 +991,53 @@ func shuntingYard(infix string) string {
 // 	return definitions, nil
 // }
 
+// func ReplaceReferenceIds(definitions map[string]*utils.DoublyLinkedList) (map[string]*utils.DoublyLinkedList, error) {
+//     operators := []string{
+//         "OPENPARENTHESES",
+//         "CLOSEPARENTHESES",
+//         "KLEENE",
+//         "CATOPERATOR",
+//         "OROPERATOR",
+//         "NULL",
+//     }
+
+//     for _, def := range definitions {
+//         currentToken := def.Head
+
+//         for currentToken != nil {
+//             // fmt.Printf("Assessing %s\n", currentToken.Value)
+//             if operator := currentToken.Value.(utils.RegexToken).IsOperator; operator != "" && !utils.StringInStringArray(operator, operators) {
+//                 if definitions[operator].Head == nil {
+//                     return nil, fmt.Errorf("regex parsing error: ident %s not recognized", operator)
+//                 }
+
+//                 prevToken := currentToken.Prev
+//                 nextToken := currentToken.Next
+// 				newList := utils.DeepCopyList(definitions[operator])
+
+//                 if prevToken != nil {
+// 					prevToken.Next = newList.Head
+// 					newList.Head.Prev = prevToken
+// 				}
+                
+// 				newList.Tail.Next = nextToken
+// 				if nextToken != nil {
+// 					nextToken.Prev = newList.Tail
+// 				}
+
+//                 currentToken = newList.Tail
+
+//             }
+
+//             currentToken = currentToken.Next
+            
+//         }
+
+//     }
+
+//     return definitions, nil
+// }
+
 func ReplaceReferenceIds(definitions map[string]*utils.DoublyLinkedList) (map[string]*utils.DoublyLinkedList, error) {
     operators := []string{
         "OPENPARENTHESES",
@@ -1001,64 +1048,46 @@ func ReplaceReferenceIds(definitions map[string]*utils.DoublyLinkedList) (map[st
         "NULL",
     }
 
-    for _, def := range definitions {
-        currentToken := def.Head
-        // fmt.Printf("\n\n\n%s", tokenName)
-        // def.PrintForward()
-        // fmt.Print("\n")
-        for currentToken != nil {
-            // fmt.Printf("Assessing %s\n", currentToken.Value)
-            if operator := currentToken.Value.(utils.RegexToken).IsOperator; operator != "" && !utils.StringInStringArray(operator, operators) {
-                if definitions[operator].Head == nil {
-                    return nil, fmt.Errorf("regex parsing error: ident %s not recognized", operator)
+    changes := true  // Para verificar si se realizó algún cambio en la iteración.
+    for changes {
+        changes = false  // Reinicia el indicador de cambios.
+        for _, def := range definitions {
+            currentToken := def.Head
+            for currentToken != nil {
+                if operator := currentToken.Value.(utils.RegexToken).IsOperator; operator != "" && !utils.StringInStringArray(operator, operators) {
+                    if definitions[operator].Head == nil {
+                        return nil, fmt.Errorf("regex parsing error: ident %s not recognized", operator)
+                    }
+                    
+                    prevToken := currentToken.Prev
+                    nextToken := currentToken.Next
+                    newList := utils.DeepCopyList(definitions[operator])
+
+                    if prevToken != nil {
+                        prevToken.Next = newList.Head
+                        newList.Head.Prev = prevToken
+                    } else {
+                        def.Head = newList.Head  // Actualiza la cabeza si el reemplazo ocurre en el primer elemento.
+                    }
+
+                    newList.Tail.Next = nextToken
+                    if nextToken != nil {
+                        nextToken.Prev = newList.Tail
+                    } else {
+                        def.Tail = newList.Tail  // Actualiza la cola si el reemplazo ocurre en el último elemento.
+                    }
+
+                    currentToken = newList.Tail  // Avanza al último elemento del reemplazo.
+                    changes = true  // Indica que se ha hecho un cambio y es necesario verificar nuevamente.
                 }
-
-                // fmt.Printf("Found reference %s\n", operator)
-                // fmt.Printf("Prev Token %s \n", currentToken.Prev.Value)
-                // fmt.Printf("Current Token %s \n", currentToken.Value)
-                // fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-
-                // Guardar el nodo anterior y el siguiente
-                prevToken := currentToken.Prev
-                nextToken := currentToken.Next
-				newList := utils.DeepCopyList(definitions[operator])
-
-                // Conectar el nodo anterior al head de la nueva sublista
-                if prevToken != nil {
-					prevToken.Next = newList.Head
-					newList.Head.Prev = prevToken
-				}
-
-                // Conectar la tail de la nueva sublista al nodo siguiente
-                
-				newList.Tail.Next = nextToken
-				if nextToken != nil {
-					nextToken.Prev = newList.Tail
-				}
-
-                // Actualizar el currentToken al prevToken de la nueva sublista para continuar la iteración
-                currentToken = newList.Tail
-
-                // fmt.Println("Showing After change")
-                // def.PrintForward()
-                // fmt.Println("\n\n")
-                // def.PrintReverse()
-                // fmt.Printf("Current Token %s \n", currentToken.Value)
-                // fmt.Printf("Next Token %s \n", currentToken.Next.Value)
-				// time.Sleep(5 * time.Second)
+                currentToken = currentToken.Next
             }
-
-            currentToken = currentToken.Next
-            
         }
-
-        // fmt.Print("\nAfter")
-        // def.PrintForward()
-        // fmt.Print("\n")
     }
 
     return definitions, nil
 }
+
 
 
 func extendedShuntingYard(infix *utils.DoublyLinkedList, definitions map[string]*utils.DoublyLinkedList) ([]utils.RegexToken, error) {

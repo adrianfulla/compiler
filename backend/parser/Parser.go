@@ -222,17 +222,22 @@ func (lex *Parser) parseFile() (*Parser, error) {
 	}
 
 	// Verificar cada elemento de arr1 en el mapa.
-    lex.scanner.PrintScanner()
+    // lex.scanner.PrintScanner()
 	for _, item := range lex.scanner.Tokens {
-        fmt.Println(item.Token)
+        // fmt.Println(item.Token)
 		if _, found := elementMap[item.Token]; !found {
 			// Si un elemento de arr1 no está en arr2, retornar un error.
-            fmt.Println(item.Token)
+            // fmt.Println(item.Token)
 			return nil, fmt.Errorf("token in yapar not in yalex")
 		}
 	}
 
-	fmt.Print(lex.Productions)
+	// fmt.Print(lex.Productions)
+
+    // for _, prod := range lex.Productions{
+    //     // fmt.Printf("head: %s, body: %s \n", prod.Head, prod.Body)
+    // }
+
 	return lex, nil
 }
 
@@ -289,21 +294,22 @@ func (parser *Parser) PrintParser(){
 func (parser *Parser) BuildSLRStates() (*Parser, error) {
     states := make([]*utils.LRState, 0)
     stateMap := make(map[string]*utils.LRState) // Usar un mapa para identificar estados únicos
-	parser.SLR = &automatas.SLR{}
+    parser.SLR = &automatas.SLR{}
 
     // Inicializar el estado inicial con el cierre del primer ítem de la producción inicial
-    initialStateItems := []*utils.Item{{
+    initialStateItems := parser.Closure([]*utils.Item{{
         Production: parser.Productions[0], // Asume que la primera producción es la producción inicial
         Position:   0,
         SubPos:     0,
-    }}
+    }}, parser.Productions)
+
     initialState := &utils.LRState{
         ID: 0,
-        Items: parser.SLR.Closure(initialStateItems, parser.Productions),
+        Items: initialStateItems,
         Transitions: make(map[string]int),
     }
 
-	parser.SLR.StartState = initialState.ID
+    parser.SLR.StartState = initialState.ID
 
     states = append(states, initialState)
     stateMap[itemKeyForState(initialState.Items)] = initialState
@@ -320,7 +326,7 @@ func (parser *Parser) BuildSLRStates() (*Parser, error) {
 
         // Para cada símbolo, calcula el GOTO y verifica si el estado resultante ya existe
         for symbol := range symbols {
-            newStateItems := parser.SLR.Goto(currentState.Items, symbol, parser.Productions)
+            newStateItems := parser.Closure(parser.SLR.Goto(currentState.Items, symbol, parser.Productions), parser.Productions)
             if len(newStateItems) == 0 {
                 continue
             }
@@ -341,10 +347,89 @@ func (parser *Parser) BuildSLRStates() (*Parser, error) {
             currentState.Transitions[symbol] = newState.ID
         }
     }
-	parser.SLR.States = states
+    parser.SLR.States = states
 
     return parser, nil
 }
+
+func (parser *Parser) Closure(items []*utils.Item, productions []*utils.ProductionToken) []*utils.Item {
+    closure := make([]*utils.Item, len(items))
+    copy(closure, items) // Copia los ítems iniciales al cierre
+
+    added := true
+    for added {
+        added = false
+        newItems := []*utils.Item{}
+
+        for _, item := range closure {
+            if item.SubPos < len(item.Production.Body[item.Position]) {
+                symbol := item.Production.Body[item.Position][item.SubPos]
+                // Verificar si el símbolo es un no terminal
+                if !utils.IsTerminal(symbol) {
+                    // Agregar todas las producciones que empiezan con este no terminal
+                    for _, prod := range productions {
+                        if prod.Head == symbol {
+                            // Agregar cada producción posible para el no terminal
+                            for _, body := range prod.Body {
+                                newItem := &utils.Item{
+                                    Production: &utils.ProductionToken{
+                                        Head: prod.Head,
+                                        Body: [][]string{body},
+                                    },
+                                    Position: 0,
+                                    SubPos: 0,
+                                }
+                                if !containsItem(closure, newItem) && !containsItem(newItems, newItem) {
+                                    newItems = append(newItems, newItem)
+                                    added = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Agregar nuevos ítems al cierre
+        closure = append(closure, newItems...)
+    }
+
+    return closure
+}
+
+// Helper function to check if an item already exists in a slice of items
+func containsItem(items []*utils.Item, item *utils.Item) bool {
+    for _, itm := range items {
+        if itm.Production.Head == item.Production.Head && len(itm.Production.Body) == len(item.Production.Body) {
+            match := true
+            for i := range itm.Production.Body {
+                if !equalBodies(itm.Production.Body[i], item.Production.Body[i]) {
+                    match = false
+                    break
+                }
+            }
+            if match {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+func equalBodies(a, b []string) bool {
+    if len(a) != len(b) {
+        return false
+    }
+    for i := range a {
+        if a[i] != b[i] {
+            return false
+        }
+    }
+    return true
+}
+
+
+
 
 func findAllSymbols(items []*utils.Item) map[string]struct{} {
     symbols := make(map[string]struct{})
@@ -463,96 +548,22 @@ func (p *Parser) findProduction(symbol string) *utils.ProductionToken {
 }
 
 
-func (parser *Parser) ClosureLR1(items []*utils.Item, productions []*utils.ProductionToken) []*utils.Item {
 
-	itemSet := make(map[string]*utils.Item)
-    
-    // Inicializar el conjunto con los ítems iniciales y sus lookaheads
-    for _, item := range items {
-        key := itemKeyLR1(item)
-        itemSet[key] = item
-    }
 
-    changed := true
-    for changed {
-        changed = false
-        currentItems := []*utils.Item{}
-        for _, item := range itemSet {
-            currentItems = append(currentItems, item)
-        }
-
-        for _, item := range currentItems {
-            if item.SubPos < len(item.Production.Body[item.Position]) {
-                nextSymbol := item.Production.Body[item.Position][item.SubPos]
-                for _, prod := range productions {
-                    if prod.Head == nextSymbol {
-                        // Calcular los nuevos lookaheads para este nuevo ítem
-                        newLookaheads := parser.calculateLookaheads(item, prod)
-                        newItem := utils.NewLR1Item(prod, 0, 0, newLookaheads)
-                        key := itemKeyLR1(newItem)
-                        if _, exists := itemSet[key]; !exists {
-                            itemSet[key] = newItem
-                            changed = true
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Convertir mapa a slice
-    finalItems := make([]*utils.Item, 0, len(itemSet))
-    for _, item := range itemSet {
-        finalItems = append(finalItems, item)
-    }
-    return finalItems
-}
-
-func (parser *Parser) calculateLookaheads(item *utils.Item, prod *utils.ProductionToken) []string {
+func Unique(items []string) []string {
+    seen := make(map[string]struct{})
     result := []string{}
-    remainingSymbols := item.Production.Body[item.Position][item.SubPos+1:]
-    visited := make(map[string]bool)
-    firstOfBeta := parser.CalculateFirstSequence(remainingSymbols, visited)
-
-    for symbol := range firstOfBeta {
-        if symbol != "ε" {
-            result = append(result, symbol)
+    for _, item := range items {
+        if _, ok := seen[item]; !ok {
+            seen[item] = struct{}{}
+            result = append(result, item)
         }
     }
-
-    if _, exists := firstOfBeta["ε"]; exists {
-        result = append(result, item.Lookaheads...)
-    }
-
-    return utils.Unique(result)
-}
-
-
-func (parser *Parser) CalculateFirstSequence(sequence []string, visited map[string]bool) map[string]struct{} {
-    result := make(map[string]struct{})
-    if len(sequence) == 0 {
-        // Si la secuencia es vacía, añadir ε
-        result["ε"] = struct{}{}
-        return result
-    }
-
-    // Calcula FIRST del primer símbolo de la secuencia
-    firstOfFirst := parser.First(sequence[0], visited)
-
-    // Añadir FIRST del primer símbolo al resultado
-    for symbol := range firstOfFirst {
-        result[symbol] = struct{}{}
-        if symbol == "ε" && len(sequence) > 1 {
-            // Si ε está en el FIRST del primer símbolo y hay más símbolos, calcular FIRST del resto de la secuencia
-            restFirst := parser.CalculateFirstSequence(sequence[1:], visited)
-            for sym := range restFirst {
-                result[sym] = struct{}{}
-            }
-        }
-    }
-
     return result
 }
+
+
+
 
 type LRTable struct {
     States      []*utils.LRState			`json:"states"`
@@ -615,136 +626,297 @@ func (parser *Parser) allSymbols() []string {
     sort.Strings(symbols) // opcional, para tener un orden consistente
     return symbols
 }
-
-// func (parser *Parser) BuildLR1Table() (*LRTable, error) {
-//     states := []*utils.LRState{}
-//     stateMap := make(map[string]int) // Para verificar existencia de estados por clave única.
-//     table := &LRTable{
-//         States:      states,
-//         Transitions: make(map[int]map[string]int),
-//         Actions:     make(map[int]map[string]string),
-// 		Productions: parser.Productions,
-//         Gotos:       make(map[int]map[string]int),
-//     }
-
-//     // Inicializar el estado inicial y agregarlo a la lista y mapa.
-//     initialState := parser.ClosureLR1([]*utils.Item{{Production: parser.Productions[0], Position: 0, SubPos: 0, Lookaheads: []string{"$"}}}, parser.Productions)
-//     initialStateKey := itemKeyForLR1State(initialState)
-//     stateID := 0
-//     states = append(states, &utils.LRState{ID: stateID, Items: initialState})
-//     stateMap[initialStateKey] = stateID
-//     worklist := []*utils.LRState{states[0]}
-
-//     // Procesamiento de los estados
-//     for len(worklist) > 0 {
-//         currentState := worklist[0]
-//         worklist = worklist[1:] // Dequeue
-
-// 		if _, ok := table.Gotos[currentState.ID]; !ok {
-//             table.Gotos[currentState.ID] = make(map[string]int)
-//         }
-
-//         currentTransitions := make(map[string]int)
-//         currentActions := make(map[string]string)
-
-//         allSymbols := parser.allSymbols() // Obtiene todos los símbolos
-//         for _, symbol := range allSymbols {
-//             newStateItems := parser.GotoLR1(currentState.Items, symbol)
-//             if len(newStateItems) > 0 {
-//                 newStateKey := itemKeyForLR1State(newStateItems)
-//                 newStateID, exists := stateMap[newStateKey]
-//                 if !exists {
-//                     newStateID = len(states)
-//                     states = append(states, &utils.LRState{ID: newStateID, Items: newStateItems})
-//                     stateMap[newStateKey] = newStateID
-//                     worklist = append(worklist, states[newStateID]) // Enqueue new state
-//                 }
-//                 // Agregar transiciones y acciones
-//                 currentTransitions[symbol] = newStateID
-//                 if utils.IsTerminal(symbol) {
-//                     currentActions[symbol] = fmt.Sprintf("shift to %d", newStateID)
-//                 } else {
-//                     currentActions[symbol] = fmt.Sprintf("goto %d", newStateID)
-// 					table.Gotos[currentState.ID][symbol] = newStateID
-//                 }
-//             }
-//         }
-
-//         table.Transitions[currentState.ID] = currentTransitions
-//         table.Actions[currentState.ID] = currentActions
-//     }
-
-//     table.States = states // Asegurar que los estados están actualizados
-//     return table, nil
-// }
-
-func (parser *Parser) BuildLR1Table() (*LRTable, error) {
-    // Inicialización de la tabla y las estructuras de datos necesarias
-    states := []*utils.LRState{}
-    stateMap := make(map[string]int) // Mapa para controlar la existencia de estados
-    table := &LRTable{
-        States:      states,
-        Transitions: make(map[int]map[string]int),
-        Actions:     make(map[int]map[string]string),
-        Productions: parser.Productions,
-        Gotos:       make(map[int]map[string]int),
+func areSlicesEqual(a, b []string) bool {
+    if len(a) != len(b) {
+        return false
     }
-
-    // Crear el estado inicial y procesar la clausura de la producción inicial
-    initialState := parser.ClosureLR1([]*utils.Item{{Production: parser.Productions[0], Position: 0, SubPos: 0, Lookaheads: []string{"$"}}}, parser.Productions)
-    initialStateKey := itemKeyForLR1State(initialState)
-    stateID := 0
-    states = append(states, &utils.LRState{ID: stateID, Items: initialState})
-    stateMap[initialStateKey] = stateID
-    worklist := []*utils.LRState{states[0]}
-
-    // Bucle para procesar cada estado en la lista de trabajo
-    for len(worklist) > 0 {
-        currentState := worklist[0]
-        worklist = worklist[1:] // Desencolar
-
-        if _, ok := table.Gotos[currentState.ID]; !ok {
-            table.Gotos[currentState.ID] = make(map[string]int)
+    for i := range a {
+        if a[i] != b[i] {
+            return false
         }
+    }
+    return true
+}
 
-        currentTransitions := make(map[string]int)
-        currentActions := make(map[string]string)
 
-        // Obtener todos los símbolos a procesar
-        allSymbols := parser.allSymbols()
-        for _, symbol := range allSymbols {
-            newStateItems := parser.GotoLR1(currentState.Items, symbol)
-            if len(newStateItems) > 0 {
-                newStateKey := itemKeyForLR1State(newStateItems)
-                newStateID, exists := stateMap[newStateKey]
-                if !exists {
-                    newStateID = len(states)
-                    states = append(states, &utils.LRState{ID: newStateID, Items: newStateItems})
-                    stateMap[newStateKey] = newStateID
-                    worklist = append(worklist, states[newStateID]) // Encolar nuevo estado
-                }
-                // Definir transiciones y acciones
-                currentTransitions[symbol] = newStateID
-                if utils.IsTerminal(symbol) {
-                    currentActions[symbol] = fmt.Sprintf("shift to %d", newStateID)
-                } else {
-                    currentActions[symbol] = fmt.Sprintf("goto %d", newStateID)
-                    table.Gotos[currentState.ID][symbol] = newStateID
+func (parser *Parser) ClosureLR1(items []*utils.Item, productions []*utils.ProductionToken) []*utils.Item {
+    closure := append([]*utils.Item{}, items...)
+
+    added := true
+    for added {
+        added = false
+        newItems := []*utils.Item{}
+
+        for _, item := range closure {
+            if item.SubPos < len(item.Production.Body[item.Position]) {
+                nextSymbol := item.Production.Body[item.Position][item.SubPos]
+                if !utils.IsTerminal(nextSymbol) {
+                    nextSymbolLookaheads := []string{}
+                    if item.SubPos+1 < len(item.Production.Body[item.Position]) {
+                        nextNextSymbol := item.Production.Body[item.Position][item.SubPos+1]
+                        lookaheadResults := parser.First(nextNextSymbol, make(map[string]bool))
+                        nextSymbolLookaheads = setToStringSlice(lookaheadResults)
+                    } else {
+                        nextSymbolLookaheads = item.Lookaheads
+                    }
+
+                    for _, prod := range productions {
+                        if prod.Head == nextSymbol {
+                            for _, body := range prod.Body {
+                                newItem := &utils.Item{
+                                    Production: &utils.ProductionToken{
+                                        Head: prod.Head,
+                                        Body: [][]string{body},
+                                    },
+                                    Position: 0,
+                                    SubPos: 0,
+                                    Lookaheads: nextSymbolLookaheads,
+                                }
+                                if !containsItemLR1(closure, newItem) {
+                                    newItems = append(newItems, newItem)
+                                    added = true
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-
-        table.Transitions[currentState.ID] = currentTransitions
-        table.Actions[currentState.ID] = currentActions
+        closure = append(closure, newItems...)
     }
-
-    table.States = states // Actualizar la lista de estados
-    return table, nil
+    return closure
 }
 
 
 
+func (parser *Parser) GotoLR1(items []*utils.Item, symbol string, productions []*utils.ProductionToken) []*utils.Item {
+    movedItems := []*utils.Item{}
+    for _, item := range items {
+        if item.SubPos < len(item.Production.Body[item.Position]) && item.Production.Body[item.Position][item.SubPos] == symbol {
+            newItem := &utils.Item{
+                Production: item.Production,
+                Position: item.Position,
+                SubPos: item.SubPos + 1,
+                Lookaheads: item.Lookaheads,
+            }
+            movedItems = append(movedItems, newItem)
+        }
+    }
+    return parser.ClosureLR1(movedItems, productions)
+}
 
+func setToStringSlice(set map[string]struct{}) []string {
+    var slice []string
+    for key := range set {
+        slice = append(slice, key)
+    }
+    return slice
+}
+
+
+func containsItemLR1(items []*utils.Item, item *utils.Item) bool {
+    for _, itm := range items {
+        if itm.Production.Head == item.Production.Head && len(itm.Production.Body) == len(item.Production.Body) {
+            match := true
+            for i := range itm.Production.Body {
+                if itm.Production.Head == item.Production.Head && areSlicesEqual(itm.Production.Body[i], item.Production.Body[i]) && equalLookaheads(itm.Lookaheads, item.Lookaheads) {
+                    match = true
+                    break
+                }                
+            }
+            if match {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+func equalLookaheads(a, b []string) bool {
+    if len(a) != len(b) {
+        return false
+    }
+    sort.Strings(a)
+    sort.Strings(b)
+    for i := range a {
+        if a[i] != b[i] {
+            return false
+        }
+    }
+    return true
+}
+
+func (parser *Parser) BuildLR1States() ([]*utils.LRState, error) {
+    initialState := parser.ClosureLR1([]*utils.Item{
+        { // Asume que la primera producción es la producción extendida S' -> S
+            Production: parser.Productions[0],
+            Position:   0,
+            SubPos:     0,
+            Lookaheads: []string{"$"}, // EOF symbol
+        },
+    }, parser.Productions)
+
+    states := []*utils.LRState{{Items: initialState}}
+    stateMap := map[string]int{itemKeyForLR1State(initialState): 0}
+    worklist := []int{0}
+
+    nextID := 1
+
+    for len(worklist) > 0 {
+        stateID := worklist[0]
+        worklist = worklist[1:]
+        currentState := states[stateID]
+
+        // Find all symbols after the dot in any item of the state
+        symbols := findAllSymbols(currentState.Items)
+        for symbol := range symbols {
+            newStateItems := parser.GotoLR1(currentState.Items, symbol, parser.Productions)
+            if len(newStateItems) == 0 {
+                continue
+            }
+
+            stateKey := itemKeyForLR1State(newStateItems)
+            newStateID, exists := stateMap[stateKey]
+            if !exists {
+                newStateID = nextID
+                nextID++
+                states = append(states, &utils.LRState{ID: newStateID, Items: newStateItems})
+                stateMap[stateKey] = newStateID
+                worklist = append(worklist, newStateID)
+            }
+            // Update transition map
+            if currentState.Transitions == nil {
+                currentState.Transitions = make(map[string]int)
+            }
+            currentState.Transitions[symbol] = newStateID
+        }
+    }
+
+    return states, nil
+}
+
+// func (parser *Parser) BuildLR1Table(states []*utils.LRState) (*LRTable, error) {
+//     table := &LRTable{
+//         States:      states,
+//         Transitions: make(map[int]map[string]int),
+//         Actions:     make(map[int]map[string]string),
+//         Gotos:       make(map[int]map[string]int),
+//         Productions: parser.Productions,
+//     }
+
+//     for _, state := range states {
+//         table.Actions[state.ID] = make(map[string]string)
+//         table.Gotos[state.ID] = make(map[string]int)
+
+//         for _, item := range state.Items {
+//             nextSymbolIndex := item.SubPos
+//             if nextSymbolIndex < len(item.Production.Body[item.Position]) {
+//                 nextSymbol := item.Production.Body[item.Position][nextSymbolIndex]
+//                 if utils.IsTerminal(nextSymbol) {
+//                     nextState, exists := state.Transitions[nextSymbol]
+//                     if exists {
+//                         table.Actions[state.ID][nextSymbol] = fmt.Sprintf("s%d", nextState)
+//                     }
+//                 } else { // Non-terminal
+//                     nextState, exists := state.Transitions[nextSymbol]
+//                     if exists {
+//                         table.Gotos[state.ID][nextSymbol] = nextState
+//                     }
+//                 }
+//             } else if nextSymbolIndex == len(item.Production.Body[item.Position]) { // Reduce
+//                 for _, lookahead := range item.Lookaheads {
+//                     // Find the production index
+//                     prodIndex := -1
+//                     for i, prod := range parser.Productions {
+//                         // fmt.Println(item.Production.Body, item.Production.Head)
+//                         if prod.Head == item.Production.Head {
+//                             prodIndex = i
+//                             break
+//                         }
+//                     }
+//                     if prodIndex == -1 {
+//                         return nil, fmt.Errorf("production not found")
+//                     }
+//                     action := fmt.Sprintf("r%d", prodIndex)
+//                     if item.Production.Head == parser.Productions[0].Head { // Accept
+//                         action = "accept"
+//                     }
+//                     table.Actions[state.ID][lookahead] = action
+//                 }
+//             }
+//         }
+//     }
+
+//     return table, nil
+// }
+
+func (parser *Parser) BuildLR1Table(states []*utils.LRState) (*LRTable, error) {
+    table := &LRTable{
+        States:      states,
+        Transitions: make(map[int]map[string]int),
+        Actions:     make(map[int]map[string]string),
+        Gotos:       make(map[int]map[string]int),
+        Productions: parser.Productions,
+    }
+
+    for _, state := range states {
+        table.Actions[state.ID] = make(map[string]string)
+        table.Gotos[state.ID] = make(map[string]int)
+
+        for _, item := range state.Items {
+            nextSymbolIndex := item.SubPos
+            if nextSymbolIndex < len(item.Production.Body[item.Position]) {
+                nextSymbol := item.Production.Body[item.Position][nextSymbolIndex]
+                if utils.IsTerminal(nextSymbol) {
+                    nextState, exists := state.Transitions[nextSymbol]
+                    if exists {
+                        table.Actions[state.ID][nextSymbol] = fmt.Sprintf("s%d", nextState)
+                    }
+                } else {
+                    nextState, exists := state.Transitions[nextSymbol]
+                    if exists {
+                        table.Gotos[state.ID][nextSymbol] = nextState
+                    }
+                }
+            } else if nextSymbolIndex == len(item.Production.Body[item.Position]) {
+                for _, lookahead := range item.Lookaheads {
+                    action := determineProductionAction(parser, item)
+                    if action == "" {
+                        return nil, fmt.Errorf("production not found")
+                    }
+                    if item.Production.Head == parser.Productions[0].Head && nextSymbolIndex == len(item.Production.Body[item.Position]) {
+                        action = "accept"
+                    }
+                    table.Actions[state.ID][lookahead] = action
+                }
+            }
+        }
+    }
+
+    return table, nil
+}
+
+func determineProductionAction(parser *Parser, item *utils.Item) string {
+    for i, prod := range parser.Productions {
+        if prod.Head == item.Production.Head {
+            bodyIndex, found := findBodyIndex(prod.Body, item.Production.Body[item.Position])
+            if found {
+                return fmt.Sprintf("r|%d|%d|%d", i, bodyIndex, item.SubPos-1)
+            }
+        }
+    }
+    return ""
+}
+
+// Verifica si un conjunto de subproducciones contiene una subproducción específica
+func findBodyIndex(bodies [][]string, targetBody []string) (int, bool) {
+    for i, body := range bodies {
+        if areSlicesEqual(body, targetBody) {
+            return i, true
+        }
+    }
+    return -1, false
+}
 
 func itemKeyForLR1State(items []*utils.Item) string {
     // Genera una clave única para un estado basado en sus ítems
@@ -780,21 +952,17 @@ func (parser *Parser) ParseString(input string, table *LRTable) (bool, error) {
     }
 
     ReverseAcceptedExpArray(tokens)
-
-	table.PrintTable()
+    table.PrintTable()
 
     tokens = append(tokens, &automatas.AcceptedExp{Token: "$"})  // Añadir el token de EOF
 
     stateStack := []int{0}  // La pila de estados empieza con el estado inicial
-    symbolStack := []string{}  // Pila de símbolos
+    // symbolStack := []string{}  // Pila de símbolos
 
     index := 0
     for index < len(tokens) {
         currentState := stateStack[len(stateStack)-1]
         currentToken := tokens[index].Token
-
-		fmt.Printf("Token %s with value %s\n",currentToken, tokens[index].Value)
-
 
         actions, exists := table.Actions[currentState]
         if !exists {
@@ -806,39 +974,41 @@ func (parser *Parser) ParseString(input string, table *LRTable) (bool, error) {
             return false, fmt.Errorf("no action for token %s in state %d", currentToken, currentState)
         }
 
-        if action[:1] == "s" {  // Shift action
-            newStateStr := action[len(action)-1:]
+        fmt.Printf("Current state: %d, Token: %s, Action: %s\n", currentState, currentToken, action)
+
+        actionParts := strings.Split(action, "|")
+        if actionParts[0][:1] == "s" {  // Shift action
+            newStateStr := actionParts[0][1:]
             newState, err := strconv.Atoi(newStateStr)
-			fmt.Println(newStateStr)
             if err != nil {
                 return false, fmt.Errorf("invalid state number: %s", newStateStr)
             }
             stateStack = append(stateStack, newState)
-            symbolStack = append(symbolStack, currentToken)
+            // symbolStack = append(symbolStack, currentToken)
             index++  // Avanzar al siguiente token
-        } else if action[:1] == "r" {  // Reduce action
-            prodIndexStr := action[2:]
-            prodIndex, err := strconv.Atoi(prodIndexStr)
-            if err != nil {
-                return false, fmt.Errorf("invalid production index: %s", prodIndexStr)
-            }
-
+        } else if actionParts[0][:1] == "r" {  // Reduce action
+            prodIndex, _ := strconv.Atoi(actionParts[1])
+            bodyIndex, _ := strconv.Atoi(actionParts[2])
+            subPosIndex, _ := strconv.Atoi(actionParts[3])
             production := table.Productions[prodIndex]
-            if len(stateStack) < len(production.Body) {
-                return false, fmt.Errorf("stack has fewer elements than the production body")
+            
+            fmt.Printf("StateStack: %v, Production: %v, Index: %d, Subpos: %d\n", stateStack, production.Body, bodyIndex, subPosIndex)
+
+            // if len(symbolStack) < len(production.Body[bodyIndex]) {
+            //     return false, fmt.Errorf("stack has fewer elements than the production body requires (%d needed, %d present)", len(production.Body[bodyIndex]), len(symbolStack))
+            // }
+            
+            stateStack = stateStack[:len(stateStack)-len(production.Body[bodyIndex])]
+            // symbolStack = symbolStack[:len(symbolStack)-len(production.Body[bodyIndex])]
+            // symbolStack = append(symbolStack, production.Head)
+        
+            if len(stateStack) == 0 {
+                return false, fmt.Errorf("state stack is empty after reduction")
             }
-
-            // Pop the stack by the length of the production body
-            stateStack = stateStack[:len(stateStack)-len(production.Body)]
-            symbolStack = symbolStack[:len(symbolStack)-len(production.Body)]
-
-            // Push the nonterminal onto the symbol stack
-            symbolStack = append(symbolStack, production.Head)
-
-            // Use the GOTO table to find the next state
-            gotoState, exists := table.Gotos[stateStack[len(stateStack)-1]][production.Head]
+            currentState := stateStack[len(stateStack)-1]
+            gotoState, exists := table.Gotos[currentState][production.Head]
             if !exists {
-                return false, fmt.Errorf("no goto entry for nonterminal %s in state %d", production.Head, stateStack[len(stateStack)-1])
+                return false, fmt.Errorf("no goto entry for nonterminal %s in state %d", production.Head, currentState)
             }
             stateStack = append(stateStack, gotoState)
         } else if action == "accept" {
@@ -848,6 +1018,7 @@ func (parser *Parser) ParseString(input string, table *LRTable) (bool, error) {
 
     return false, fmt.Errorf("input did not resolve to an accept state")
 }
+
 
 // isIgnoredToken verifica si un token debe ser ignorado según la lista de IgnoredTokens del parser.
 func (parser *Parser) isIgnoredToken(token string) bool {
@@ -877,22 +1048,6 @@ func itemKeyLR1(item *utils.Item) string {
     return fmt.Sprintf("%s-%d-%d-%v", item.Production.Head, item.Position, item.SubPos, item.Lookaheads)
 }
 
-func (parser *Parser) GotoLR1(items []*utils.Item, symbol string) []*utils.Item {
-    movedItems := []*utils.Item{}
-    for _, item := range items {
-        if item.SubPos < len(item.Production.Body[item.Position]) && item.Production.Body[item.Position][item.SubPos] == symbol {
-            // Crear un nuevo ítem moviendo el punto pasado el símbolo
-            newItem := &utils.Item{
-                Production: item.Production,
-                Position: item.Position,
-                SubPos: item.SubPos + 1,
-                Lookaheads: item.Lookaheads, // Los lookaheads permanecen
-            }
-            movedItems = append(movedItems, newItem)
-        }
-    }
-    return parser.ClosureLR1(movedItems, parser.Productions) // Recalcular la clausura para los nuevos ítems
-}
 
 
 type SLRStateOutput struct {

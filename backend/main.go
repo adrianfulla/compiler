@@ -9,7 +9,7 @@ import (
 	"github.com/adrianfulla/compiler/backend/automatas"
 	"github.com/adrianfulla/compiler/backend/lexer"
 	"github.com/adrianfulla/compiler/backend/parser"
-	"github.com/adrianfulla/compiler/backend/utils"
+	// "github.com/adrianfulla/compiler/backend/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -172,7 +172,7 @@ func serve() {
 		})
 	})
 
-	r.POST("/automata/arbol", func(c *gin.Context) {
+	r.POST("/automata/arbol/", func(c *gin.Context) {
 		var request struct {
 			Regex string `json:"regex"`
 		}
@@ -401,11 +401,11 @@ func parseLex(ymlFile string, parseString string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing yml file")
 	}
-	accepted, err := scanner.ScanFile(parseString)
+	response,err := scanner.ScanFile(parseString)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing string")
 	}
-	jsonData, err := json.Marshal(accepted)
+	jsonData, err := json.Marshal(response)
 	if err != nil {
 		fmt.Print("error serializing expression to  Json")
 		return nil, fmt.Errorf("error serializing expression to  Json")
@@ -446,9 +446,13 @@ func makeSLR(parser *parser.Parser) ([]byte, *parser.LRTable ,error) {
     if err != nil {
         return nil, nil,fmt.Errorf("error obteniendo la salida de PrintSLR: %v", err)
     }
+	LR1States, err := pa.BuildLR1States()
+	if err != nil {
+        return nil, nil,fmt.Errorf("error obteniendo la salida de PrintSLR: %v", err)
+    }
 
     // Construye la tabla de análisis LR(1)
-    lr1Table, err := parser.BuildLR1Table()
+    lr1Table, err := parser.BuildLR1Table(LR1States)
     if err != nil {
         return nil, nil,fmt.Errorf("error construyendo la tabla LR(1): %v", err)
     }
@@ -485,9 +489,12 @@ func makeSLR(parser *parser.Parser) ([]byte, *parser.LRTable ,error) {
 func parseString(parser *parser.Parser, parsing string, parseTable *parser.LRTable) ([]byte, error) {
     validated, err := parser.ParseString(parsing, parseTable)
 
-	response := utils.BoolsToBytes([]bool{validated})
+	response := "false"
+	if validated{
+		response = "true"
+	}
 	
-    return response, err
+    return []byte(response), err
 }
 
 

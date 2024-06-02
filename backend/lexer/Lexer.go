@@ -193,44 +193,45 @@ func SortTokens(tokens []*automatas.AcceptedExp) []*automatas.AcceptedExp{
 }
 
 func AddOrUpdateExp(newExp *automatas.AcceptedExp, currentExps []*automatas.AcceptedExp) []*automatas.AcceptedExp {
-    temp := []*automatas.AcceptedExp{}
-    // overlaps := map[int]bool{} // Mapa para marcar índices de los tokens `ERROR` que deben eliminarse
+    // Añade el nuevo token en la lista temporal directamente
+    temp := append([]*automatas.AcceptedExp{}, newExp)
 
-    // Añade el nuevo token en la lista temporal
-    temp = append(temp, newExp)
-
-    // Incluye los tokens existentes, revisando solapamientos
+    // Agrega los tokens existentes en la lista temporal
     for _, exp := range currentExps {
-        // Verifica solapamiento completo
-        if exp.Start >= newExp.Start && exp.End <= newExp.End && newExp.Token != "ERROR" && exp.Token == "ERROR" {
-            // Marca el token ERROR para eliminación
-            continue
-        }
-        // Añade el token actual a la lista temporal si no es un ERROR marcado para eliminación
         temp = append(temp, exp)
     }
 
-    // Limpiar tokens ERROR que están completamente contenidos dentro de otros tokens más específicos
+    // Proceso de eliminación de expresiones contenidas dentro de otras más grandes
     finalExps := []*automatas.AcceptedExp{}
-    for _, exp := range temp {
-        if exp.Token == "ERROR" {
-            contained := false
-            for _, checkExp := range temp {
-                if exp.Start >= checkExp.Start && exp.End <= checkExp.End && exp != checkExp && checkExp.Token != "ERROR" {
-                    contained = true
+    for i, exp := range temp {
+        contained := false
+        for j, checkExp := range temp {
+            if i != j && exp.Start >= checkExp.Start && exp.End <= checkExp.End && checkExp.Token != "ERROR" {
+                contained = true
+                break
+            }
+        }
+        if !contained {
+            finalExps = append(finalExps, exp)
+        } else if exp.Token == "ERROR" {
+            // Añadir ERROR si no está contenido dentro de otra expresión válida
+            stillValid := true
+            for j, checkExp := range temp {
+                if i != j && exp.Start >= checkExp.Start && exp.End <= checkExp.End && checkExp.Token != "ERROR" {
+                    stillValid = false
                     break
                 }
             }
-            if !contained {
+            if stillValid {
                 finalExps = append(finalExps, exp)
             }
-        } else {
-            finalExps = append(finalExps, exp)
         }
     }
 
     return finalExps
 }
+
+
 
 
 

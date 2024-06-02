@@ -122,6 +122,11 @@ func ExtendedNewDirectAfd(regex []utils.RegexToken) *DirectAfd{
 		estados:           make(map[string]*Dstate),
 		posiciones:        make(map[int][]int),
 	}
+
+	// for _, token := range regex{
+	// 	fmt.Printf(" %s, operator: %s", token.Value, token.IsOperator)
+	// }
+
 	afd.estadoActual = 0
 	afd.Arbol = &ArbolExpresion{}
 	afd.Arbol.ExtendedConstruirArbol(append(regex, utils.RegexToken{
@@ -147,66 +152,25 @@ func (afd *DirectAfd) nuevoEstado(position []int, aceptacion bool) *Dstate {
 }
 
 func (afd *DirectAfd) obtenerOCrearEstado(positions []int) *Dstate {
-	for _, estado := range afd.estados {
-		if utils.CompareSlices(estado.posicion, positions) {
-			return estado
-		}
-	}
-	aceptacion := intInIntArray(*afd.Arbol.Raiz.Derecho.Leaf, positions)
-	return afd.nuevoEstado(positions, aceptacion)
+    for _, estado := range afd.estados {
+        if utils.CompareSlices(estado.posicion, positions) {
+            return estado
+        }
+    }
+    // Identificar si el estado debe ser de aceptación
+    aceptacion := false
+    // Un estado es de aceptación si alguna de las posiciones puede ser el final de la expresión regular
+    for _, pos := range positions {
+        if afd.Arbol.Simbolos[pos].Valor == '#' { // Suponiendo que '#' es el carácter de finalización
+            aceptacion = true
+            break
+        }
+    }
+
+    return afd.nuevoEstado(positions, aceptacion)
 }
 
-// construirAfd construye el AFD a partir del árbol de expresión.
-// func (afd *DirectAfd) construirAfd() {
-// 	afd.estadoInicial = afd.obtenerOCrearEstado(afd.Arbol.Raiz.Firstpos)
-// 	pendientes := utils.NewStack()
-// 	pendientes.Push(afd.estadoInicial)
-// 	procesados := utils.NewStack()
 
-// 	// fmt.Print("Simbolos del arbol\n")
-// 	// for x, y := range afd.Arbol.Simbolos{
-// 	// 	fmt.Printf("Posicion %d con valor %s, followpos %d\n", x, y.Valor, y.Followpos)
-// 	// }
-// 	for pendientes.Size() > 0 {
-// 		fmt.Printf("Remaining %d\n", pendientes.Size())
-// 		curr_estado := pendientes.Pop().(*Dstate)
-// 		if !procesados.ElemInStack(curr_estado.nombre) {
-// 			simbolos_a_pos := make(map[rune][]int)
-// 			for _, pos := range curr_estado.posicion {
-// 				// fmt.Printf("indice %d Posicion %d\n", xy, pos)
-// 				simbolo := afd.Arbol.Simbolos[pos].Valor
-// 				if !strings.ContainsRune("ε#", simbolo) {
-// 					if simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] == nil {
-// 						simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = make([]int, 0)
-// 					}
-// 					simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor] = append(simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos...)
-// 					// fmt.Printf("Simbolos a pos: [simbolo:%s, pos: %d, followpos: %d]\n", simbolo, simbolos_a_pos[afd.Arbol.Simbolos[pos].Valor], afd.Arbol.Simbolos[pos].Followpos)
-// 				}
-// 			}
-
-// 			for sim, pos := range simbolos_a_pos {
-// 				next_state := afd.obtenerOCrearEstado(pos)
-// 				curr_estado.AddTransicion(sim, next_state)
-// 				if !procesados.ElemInStack(next_state.nombre) && !pendientes.ElemInStack(next_state) {
-// 					pendientes.Push(next_state)
-// 				}
-// 			}
-// 			procesados.Push(curr_estado.nombre)
-// 			// fmt.Print("\nPendientes\n")
-// 			// printDstateStack(*pendientes)
-// 			// fmt.Print("\nProcesados\n")
-// 			// printDstateStack(*procesados)
-// 			// fmt.Print("\nEstaods\n")
-// 			// for val, state := range afd.estados {
-// 			// 	fmt.Printf("Estado %s con nombre %s tiene %d con transiciones\n", val, state.nombre, state.posicion)
-// 			// 	for sim, trans := range state.transiciones {
-// 			// 		fmt.Printf("Simbolo %s tiene transicion a %s\n", sim, trans.nombre)
-// 			// 	}
-// 			// }
-// 		}
-// 		// time.Sleep(1 * time.Second)
-// 	}
-// }
 
 func (afd *DirectAfd) construirAfd() {
     afd.estadoInicial = afd.obtenerOCrearEstado(afd.Arbol.Raiz.Firstpos)
@@ -227,12 +191,13 @@ func (afd *DirectAfd) construirAfd() {
             }
 
             for sim, pos := range simbolos_a_pos {
-                next_state := afd.obtenerOCrearEstado(pos)
-                curr_estado.AddTransicion(sim, next_state)
-                if !procesados[next_state.nombre] && !pendientes.ElemInStack(next_state) {
-                    pendientes.Push(next_state)
-                }
-            }
+				next_state := afd.obtenerOCrearEstado(pos)
+				curr_estado.AddTransicion(sim, next_state)
+				if !procesados[next_state.nombre] && !pendientes.ElemInStack(next_state) {
+					pendientes.Push(next_state)
+				}
+			}
+
             procesados[curr_estado.nombre] = true
         }
     }

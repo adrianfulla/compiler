@@ -26,7 +26,7 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 	scan.Definitions["ERROR"] = "(_)"
 
 	for token, def := range scan.Definitions {
-		// fmt.Println(token, def)
+		// fmt.Println(token)
 		validated, err := automatas.ExtendedValidation(def)
 		if err != nil {
 			fmt.Println(err)
@@ -49,26 +49,37 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 			continue
 		}
 		validated, err := automatas.ExtendedValidation(token.Regex)
+		fmt.Print(token.Token)
 		if err != nil {
+			// fmt.Print("ACA")
 			fmt.Println(err)
-			return nil, err
+			return nil,  err
 		}
 		fmt.Println(token)
 		// validated.PrintForward()
 		validatedDefinitions[token.Token] = validated
 	}
 
-	// for token, def := range validatedDefinitions{
+	// for token, _ := range validatedDefinitions{
 	// 	fmt.Print(token)
-	// 	def.PrintForward()
+	// // 	def.PrintForward()
 	// 	fmt.Print("\n\n")
 	// }
+
+	
 
 	newDict, err := automatas.ReplaceReferenceIds(validatedDefinitions)
 	if err != nil{
 		return nil, err
 	}
 	validatedDefinitions = newDict
+
+
+	// for token, _ := range validatedDefinitions{
+	// 		fmt.Print(token)
+	// 	// 	def.PrintForward()
+	// 		fmt.Print("\n\n")
+		// }
 	
 	tokenDefinitions := map[string]*utils.DoublyLinkedList{}
 	for _, token := range scan.Tokens{
@@ -83,11 +94,14 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 		posfix, err := automatas.ExtendedInfixToPosfix(def, validatedDefinitions)	
 		if err != nil {
 			fmt.Println(err)
-			return nil, err
+			return nil,err
 		}
 		// fmt.Println(token, posfix)
+		// fmt.Println("")
 		posfixDefinitions[token] = posfix
 	}
+
+
 	
 	for token, posfix := range posfixDefinitions {
 		afd := automatas.ExtendedNewDirectAfd(posfix)
@@ -96,12 +110,14 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 		afdStack[token] = *afdJson
 	}
 
+	// afdStack["NUMBER"]
+
 	// scan.PrintScanner()
 
 	return scan.parseFile(file, afdStack)
 }
 
-func (scan *Scanner) parseFile(file string, afdStack map[string]automatas.DAfdJson) ([]*automatas.AcceptedExp, error) {
+func (scan *Scanner) parseFile(file string, afdStack map[string]automatas.DAfdJson) ([]*automatas.AcceptedExp,error) {
 	// fmt.Println(file)
 	ch := make(chan map[string]utils.Stack, len(afdStack))
 	var wg sync.WaitGroup
@@ -127,6 +143,7 @@ func (scan *Scanner) parseFile(file string, afdStack map[string]automatas.DAfdJs
 		}
 	}
 	tokensFound = SortTokens(tokensFound)
+	// dfa := afdStack["NUMBER"]
 	return tokensFound, nil
 }
 
