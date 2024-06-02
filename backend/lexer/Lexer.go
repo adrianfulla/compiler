@@ -31,13 +31,14 @@ func LexYmlFile(fileYml string) (*Scanner, error) {
 
 	// definitions["COMMENT"] = "'(* '([\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"]*)' *)'"
 	// definitions["SEMICOLON"] = "';'"
-	definitions["COMMENTS"] = "'(* '['A'-'Z''a'-'z''0'-'9'\" .\"]*' *)'"
+	definitions["COMMENTS"] = "'(* '['A'-'Z''a'-'z''0'-'9'\" -.\"]*' *)'"
 	definitions["DEFINITIONS"] = "'let '['A'-'Z''a'-'z']*\" = \"['A'-'Z''a'-'z''0'-'9'\"| []()\\'\\\"\\\\-*+?/%:;^.\"]*"
 	definitions["TOKENRULES"] = "'rule tokens = '"
 	// definitions["TOKENS"] = "'|'?'(\\'')|('\"')?[^\"\\t\\n\\r\\b\\f\\v\\\"]*"
 	definitions["TOKENEXPRESIONS"] = "(['A'-'Z''a'-'z']+'\\n')|(\"'\"[^\"\\t\\s\\n \"]+\"'\")|(['A'-'Z''a'-'z']+[' ''\\t'][' ''\\t']+)"
 	definitions["TOKENRETURNS"] = "\"{ return \"['A'-'Z']*\" }\""
-	definitions["ERROR"]	= "_"
+	// definitions["ERROR"]	= "_"
+	// definitions["OR"]	= "'| '"
 	
 	validatedDefinitions := map[string]*utils.DoublyLinkedList{}
 	
@@ -191,21 +192,47 @@ func SortTokens(tokens []*automatas.AcceptedExp) []*automatas.AcceptedExp{
 	return tokens
 }
 
-func AddOrUpdateExp(newExp *automatas.AcceptedExp, currentExps []*automatas.AcceptedExp) []*automatas.AcceptedExp{
-	temp := []*automatas.AcceptedExp{}
-	for _, exp := range currentExps {
-		if newExp.Start <= exp.Start && newExp.End >= exp.End{
-			continue
-		}
-		if exp.Start <= newExp.Start && exp.End >= newExp.End{
-			return currentExps
-		}
-		temp = append(temp, exp)
-	}
-	temp = append(temp, newExp)
-	currentExps = temp
-	return currentExps
+func AddOrUpdateExp(newExp *automatas.AcceptedExp, currentExps []*automatas.AcceptedExp) []*automatas.AcceptedExp {
+    temp := []*automatas.AcceptedExp{}
+    // overlaps := map[int]bool{} // Mapa para marcar índices de los tokens `ERROR` que deben eliminarse
+
+    // Añade el nuevo token en la lista temporal
+    temp = append(temp, newExp)
+
+    // Incluye los tokens existentes, revisando solapamientos
+    for _, exp := range currentExps {
+        // Verifica solapamiento completo
+        if exp.Start >= newExp.Start && exp.End <= newExp.End && newExp.Token != "ERROR" && exp.Token == "ERROR" {
+            // Marca el token ERROR para eliminación
+            continue
+        }
+        // Añade el token actual a la lista temporal si no es un ERROR marcado para eliminación
+        temp = append(temp, exp)
+    }
+
+    // Limpiar tokens ERROR que están completamente contenidos dentro de otros tokens más específicos
+    finalExps := []*automatas.AcceptedExp{}
+    for _, exp := range temp {
+        if exp.Token == "ERROR" {
+            contained := false
+            for _, checkExp := range temp {
+                if exp.Start >= checkExp.Start && exp.End <= checkExp.End && exp != checkExp && checkExp.Token != "ERROR" {
+                    contained = true
+                    break
+                }
+            }
+            if !contained {
+                finalExps = append(finalExps, exp)
+            }
+        } else {
+            finalExps = append(finalExps, exp)
+        }
+    }
+
+    return finalExps
 }
+
+
 
 func (lex *Lexer) searchYalex(index string, ch chan<-map[string]utils.Stack) {
 	resultado := make(map[string]utils.Stack)

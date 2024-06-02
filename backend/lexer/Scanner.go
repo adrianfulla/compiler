@@ -4,6 +4,7 @@ import (
 	// "errors"
 	"fmt"
 	"sync"
+	// "text/scanner"
 
 	"github.com/adrianfulla/compiler/backend/automatas"
 	"github.com/adrianfulla/compiler/backend/utils"
@@ -22,6 +23,8 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 	afdStack := map[string]automatas.DAfdJson{}
 	validatedDefinitions := map[string]*utils.DoublyLinkedList{}
 
+	scan.Definitions["ERROR"] = "(_)"
+
 	for token, def := range scan.Definitions {
 		// fmt.Println(token, def)
 		validated, err := automatas.ExtendedValidation(def)
@@ -33,20 +36,11 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 		
 		validatedDefinitions[token] = validated
 	}
-	errorNode := &utils.LinkedNode{
-		Value: utils.RegexToken{
-			Value: []rune{rune('_')},
-		},
-		Prev: nil,
-		Next: nil,
-	}
-	validatedDefinitions["ERROR"] = &utils.DoublyLinkedList{
-		Head: errorNode,
-		Tail: errorNode,
-	}
+	
+	
 	scan.Tokens = append(scan.Tokens, utils.LexToken{
 		Token: "ERROR",
-		Regex: "_",
+		Regex: "(_)",
 		Action: "",
 	})
 	
@@ -59,7 +53,7 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 			fmt.Println(err)
 			return nil, err
 		}
-		// fmt.Println(token)
+		fmt.Println(token)
 		// validated.PrintForward()
 		validatedDefinitions[token.Token] = validated
 	}
@@ -82,7 +76,6 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 		tokenDefinitions[token.Token] = validatedDefinitions[token.Token]
 		
 	}
-
 	
 	posfixDefinitions := map[string][]utils.RegexToken{}
 	for token, def := range tokenDefinitions { 
@@ -102,6 +95,8 @@ func (scan *Scanner) ScanFile(file string) ([]*automatas.AcceptedExp, error) {
 		// fmt.Println(afdJson)
 		afdStack[token] = *afdJson
 	}
+
+	// scan.PrintScanner()
 
 	return scan.parseFile(file, afdStack)
 }

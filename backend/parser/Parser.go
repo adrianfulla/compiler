@@ -168,7 +168,7 @@ func (lex *Parser) parseFile() (*Parser, error) {
 		case "TOKEN":
 			// fmt.Println("token found")
 			if passedSplitter {
-				fmt.Print("error parsing yapar: invalid token definition after splitter")
+				// fmt.Print("error parsing yapar: invalid token definition after splitter")
 				return nil, fmt.Errorf("error parsing yapar: invalid token definition after splitter")
 			}
 			token = tokensFoundStack.Pop().(*automatas.AcceptedExp)
@@ -180,7 +180,7 @@ func (lex *Parser) parseFile() (*Parser, error) {
 					})
 				} else {
 					if token.Token != "SPACE" {
-						return nil, fmt.Errorf("error parsing yapar: invalid token definition")
+						return nil, fmt.Errorf("error parsing yapar: invalid token definition in token definitions")
 					}
 				}
 				token = tokensFoundStack.Pop().(*automatas.AcceptedExp)
@@ -195,15 +195,15 @@ func (lex *Parser) parseFile() (*Parser, error) {
 
 		case "TWODOTS":
 			// fmt.Println("twodots found")
-			return nil, fmt.Errorf("error parsing yapar: invalid token definition")
+			return nil, fmt.Errorf("error parsing yapar: invalid token definition twodots")
 
 		case "SEMICOLON":
 			// fmt.Println("semicolon found")
-			return nil, fmt.Errorf("error parsing yapar: invalid token definition")
+			return nil, fmt.Errorf("error parsing yapar: invalid token definition semicolon")
 
 		case "OR":
 			// fmt.Println("lowercase found")
-			return nil, fmt.Errorf("error parsing yapar: invalid token definition")
+			return nil, fmt.Errorf("error parsing yapar: invalid token definition or")
 
 		case "NEWLINE":
 			// fmt.Println("newline found")
@@ -222,14 +222,17 @@ func (lex *Parser) parseFile() (*Parser, error) {
 	}
 
 	// Verificar cada elemento de arr1 en el mapa.
+    lex.scanner.PrintScanner()
 	for _, item := range lex.scanner.Tokens {
+        fmt.Println(item.Token)
 		if _, found := elementMap[item.Token]; !found {
 			// Si un elemento de arr1 no está en arr2, retornar un error.
+            fmt.Println(item.Token)
 			return nil, fmt.Errorf("token in yapar not in yalex")
 		}
 	}
 
-	// fmt.Print(newScanner.Productions)
+	fmt.Print(lex.Productions)
 	return lex, nil
 }
 
