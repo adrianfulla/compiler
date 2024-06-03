@@ -489,12 +489,17 @@ func makeSLR(parser *parser.Parser) ([]byte, *parser.LRTable ,error) {
 func parseString(parser *parser.Parser, parsing string, parseTable *parser.LRTable) ([]byte, error) {
     validated, err := parser.ParseString(parsing, parseTable)
 
-	response := "false"
+	if err != nil {
+        return nil, fmt.Errorf("error parseando la cadena: %v", err)
+    }
+
+	response := []byte("false")
 	if validated{
-		response = "true"
+		response = []byte("true")
 	}
+
 	
-    return []byte(response), err
+    return response, nil
 }
 
 

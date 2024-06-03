@@ -28,3 +28,9 @@ type LRState struct {
     Items []*Item   `json:"items"`
     Transitions map[string]int `json:"transitions"`
 }
+
+type ValidSegment struct {
+    Start   int `json:"start"`
+    End   int `json:"end"`
+    Message   string `json:"message"`
+}
