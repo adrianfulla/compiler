@@ -493,13 +493,30 @@ func parseString(parser *parser.Parser, parsing string, parseTable *parser.LRTab
         return nil, fmt.Errorf("error parseando la cadena: %v", err)
     }
 
-	response := []byte("false")
-	if validated{
-		response = []byte("true")
-	}
+	// type CombinedParseResponse struct {
+    //     LR1Table  json.RawMessage `json:"lr1_table"`
+	// 	Message json.RawMessage `json:"message"`
+    // }
+	// lr1TableJson, err := json.MarshalIndent(parseTable, "", "    ")
+	// lr1Table.PrintTable()
+    // if err != nil {
+    //     return nil, fmt.Errorf("error serializando la tabla LR(1) a JSON: %v", err)
+    // }
+    
 
-	
-    return response, nil
+	message := []byte("false")
+	if validated{
+		message = []byte("true")
+	}
+	// combined := CombinedParseResponse{
+    //     LR1Table: json.RawMessage(lr1TableJson),
+	// 	Message: json.RawMessage(message),
+    // }
+	// finalJson, err := json.MarshalIndent(combined, "", "    ")
+    // if err != nil {
+    //     return nil,fmt.Errorf("error combinando SLR, PrintSLR, y LR(1) en JSON: %v", err)
+    // }
+    return message, nil
 }
 
 

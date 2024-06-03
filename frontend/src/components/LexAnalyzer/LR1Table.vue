@@ -10,7 +10,7 @@
             <tr>
               <th>Estado ID</th>
               <th>Ítems</th>
-              <th>Transiciones</th>
+              <th>GOTO</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -25,8 +25,8 @@
                 </ul>
               </td>
               <td>
-                <ul v-if="lr1Table.transitions && lr1Table.transitions[state.id]">
-                  <li v-for="(dest, symbol) in lr1Table.transitions[state.id]" :key="symbol">
+                <ul v-if="lr1Table.gotos && lr1Table.gotos[state.id]">
+                  <li v-for="(dest, symbol) in lr1Table.gotos[state.id]" :key="symbol">
                     {{ symbol }}: Estado {{ dest }}
                   </li>
                 </ul>

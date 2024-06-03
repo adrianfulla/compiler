@@ -20,14 +20,14 @@
     methods: {
       handleInput() {
         if (this.sendSignal) {
-          this.$emit('sendData', this.inputData);
+          this.$emit('sendData', this.inputData+" ");
         }
       }
     },
     watch: {
       sendSignal(newVal) {
         if (newVal) {
-          this.$emit('sendData', this.inputData);
+          this.$emit('sendData', this.inputData+" ");
         }
       }
     }
